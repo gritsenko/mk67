@@ -1,17 +1,19 @@
 // @ts-nocheck
-import { CHARACTERS, BOSS_DATA, BOSS_MOVES } from './data/characters';
-
-const SCALE = 1.4;
-const BOSS_SCALE = 1.35;
+import { BOSS_DATA, BOSS_MOVES } from './data/characters';
+import { BOSS_SCALE, GAME_HEIGHT as CH, GAME_WIDTH as CW, PLAYER_SCALE as SCALE, ROUND_DURATION_SECONDS } from './game/config';
+import { selection, resetSelection, buildCharGrids, checkReady, setBossCtrl, setP2Mode } from './scenes/selectionScene';
+import { hideScreen, hideTouchControls, setControlsInfoVisible, showScreen } from './scenes/screenManager';
+import { createBackground, drawBackground } from './systems/background';
+import { drawParticles, resetParticles, spawnParticles, updateParticles } from './systems/particles';
 
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-const CW = 960; const CH = 540; canvas.width = CW; canvas.height = CH;
+canvas.width = CW; canvas.height = CH;
 
-let gameState = 'menu', selectedP1 = null, selectedP2 = null, isP2Bot = false;
-let isBossFight = false, isBossSel = false, bossIsPlayer = false; // босс по умолчанию — БОТ
-let player1, player2, particles = [], screenShake = 0, roundTimer = 99, roundTimerAccum = 0, roundNum = 1, p1Wins = 0, p2Wins = 0, koText = '', koTimer = 0;
-let bgStars = [], bgBuildings = [];
+let gameState = 'menu';
+let isBossFight = false;
+let player1, player2, screenShake = 0, roundTimer = ROUND_DURATION_SECONDS, roundTimerAccum = 0, roundNum = 1, p1Wins = 0, p2Wins = 0, koText = '', koTimer = 0;
+const background = createBackground();
 let botActionTimer = 0, botDecision = 'idle';
 let bossBotTimer = 0, bossBotDecision = 'idle';
 let isTouchDevice = false;
@@ -26,26 +28,6 @@ function setupTouchControls() {
     touchEl.addEventListener('touchstart', e => { e.preventDefault(); for (let touch of e.changedTouches) { const target = document.elementFromPoint(touch.clientX, touch.clientY); if (target && target.dataset.key) { activeTouches[touch.identifier] = target.dataset.key; keys[target.dataset.key] = true; } } }, { passive: false });
     touchEl.addEventListener('touchend', e => { e.preventDefault(); for (let touch of e.changedTouches) { const key = activeTouches[touch.identifier]; if (key) { keys[key] = false; delete activeTouches[touch.identifier]; } } }, { passive: false });
     touchEl.addEventListener('touchcancel', e => { e.preventDefault(); for (let touch of e.changedTouches) { const key = activeTouches[touch.identifier]; if (key) { keys[key] = false; delete activeTouches[touch.identifier]; } } }, { passive: false });
-}
-
-function hideTouchUI() {
-  if(isTouchDevice){
-    document.getElementById('touchControls').style.display='none';
-    document.getElementById('p2TouchControls').style.display='none';
-  }
-}
-
-function generateBackground() { bgStars=[]; for(let i=0;i<80;i++) bgStars.push({x:Math.random()*CW,y:Math.random()*CH*0.5,r:Math.random()*1.5+0.3,a:Math.random()*0.6+0.2,speed:Math.random()*0.003+0.001}); bgBuildings=[]; let bx=0; while(bx<CW){const bw=Math.random()*60+30,bh=Math.random()*150+60;bgBuildings.push({x:bx,w:bw,h:bh,windows:Math.random()>0.3});bx+=bw+Math.random()*10;} }
-generateBackground();
-
-function drawBackground(time) {
-  const grad=ctx.createLinearGradient(0,0,0,CH);grad.addColorStop(0,'#0a0a1a');grad.addColorStop(0.4,'#1a0f20');grad.addColorStop(0.7,'#2a1520');grad.addColorStop(1,'#0d0d15');ctx.fillStyle=grad;ctx.fillRect(0,0,CW,CH);
-  bgStars.forEach(s=>{const f=Math.sin(time*s.speed*1000)*0.3+0.7;ctx.fillStyle=`rgba(255,230,200,${s.a*f})`;ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fill();});
-  const groundY=CH*0.82; bgBuildings.forEach(b=>{ctx.fillStyle='#0f0f18';ctx.fillRect(b.x,groundY-b.h,b.w,b.h);if(b.windows){for(let wy=groundY-b.h+10;wy<groundY-10;wy+=18)for(let wx=b.x+6;wx<b.x+b.w-6;wx+=12){const lit=Math.sin(wx*3.7+wy*2.1+time*0.5)>0.3;ctx.fillStyle=lit?'rgba(255,180,60,0.25)':'rgba(30,30,50,0.3)';ctx.fillRect(wx,wy,6,8);}}});
-  const gGrad=ctx.createLinearGradient(0,groundY,0,CH);gGrad.addColorStop(0,'#2a1f1a');gGrad.addColorStop(0.3,'#1a1410');gGrad.addColorStop(1,'#0a0a0f');ctx.fillStyle=gGrad;ctx.fillRect(0,groundY,CW,CH-groundY);
-  ctx.strokeStyle='rgba(255,77,42,0.3)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(0,groundY);ctx.lineTo(CW,groundY);ctx.stroke();
-  const glowGrad=ctx.createRadialGradient(CW/2,groundY,0,CW/2,groundY,CW*0.4);glowGrad.addColorStop(0,'rgba(255,77,42,0.08)');glowGrad.addColorStop(1,'rgba(255,77,42,0)');ctx.fillStyle=glowGrad;ctx.fillRect(0,groundY-40,CW,80);
-  if(isBossFight){ ctx.fillStyle=`rgba(40,10,50,${0.12+Math.sin(time*1.5)*0.05})`; ctx.fillRect(0,0,CW,CH); }
 }
 
 function roundRect(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();}
@@ -1157,10 +1139,6 @@ function drawBossFX(time){
   }
 }
 
-function spawnParticles(x,y,color,count,type){for(let i=0;i<count;i++){const angle=Math.random()*Math.PI*2,speed=type==='hit'?Math.random()*6+2:type==='rock'?Math.random()*4-2:Math.random()*1;particles.push({x,y,vx:Math.cos(angle)*speed,vy:type==='rock'?-Math.random()*8:(type==='heal'?-1.5-Math.random():Math.sin(angle)*speed-(type==='hit'?3:1)),life:type==='dust'?15:type==='rock'?40:type==='heal'?40:30+Math.random()*20,maxLife:50,color,size:(type==='hit'?Math.random()*4+2:type==='rock'?Math.random()*8+4:type==='heal'?4:Math.random()*2+1)*SCALE,type});}}
-function updateParticles(){for(let i=particles.length-1;i>=0;i--){const p=particles[i];p.x+=p.vx;p.y+=p.vy;p.vy+= p.type==='heal' ? -0.02 : 0.15; p.life--;if(p.life<=0)particles.splice(i,1);}}
-function drawParticles(){particles.forEach(p=>{const alpha=Math.max(0,p.life/p.maxLife);ctx.globalAlpha=alpha;ctx.fillStyle=p.color;if(p.type==='hit'){ctx.shadowColor=p.color;ctx.shadowBlur=10;}if(p.type==='rock'){ctx.fillRect(p.x-p.size/2,p.y-p.size/2,p.size,p.size);}else if(p.type==='heal'){ctx.fillRect(p.x-p.size/2,p.y-p.size/6,p.size,p.size/3);ctx.fillRect(p.x-p.size/6,p.y-p.size/2,p.size/3,p.size);}else{ctx.beginPath();ctx.arc(p.x,p.y,p.size*alpha,0,Math.PI*2);ctx.fill();}ctx.shadowBlur=0;});ctx.globalAlpha=1;}
-
 function drawFightUI(time) {
   const barW=CW*0.35,barH=22,barY=30,gap=20;
   drawHPBar(CW/2-gap-barW,barY,barW,barH,player1,true,time);
@@ -1168,7 +1146,7 @@ function drawFightUI(time) {
     drawBossHUD(time);
   } else {
     drawHPBar(CW/2+gap,barY,barW,barH,player2,false,time);
-    ctx.font='800 20px "Russo One"';ctx.textAlign='left';ctx.fillStyle=player2.data.color;ctx.fillText(player2.data.name+(isP2Bot?' (БОТ)':''),CW/2+gap,barY-8);
+    ctx.font='800 20px "Russo One"';ctx.textAlign='left';ctx.fillStyle=player2.data.color;ctx.fillText(player2.data.name+(selection.p2Mode==='bot'?' (БОТ)':''),CW/2+gap,barY-8);
     ctx.font='800 20px "Russo One"';ctx.fillStyle=player1.data.color;ctx.textAlign='right';ctx.fillText(p1Wins,CW/2-30,barY+48);ctx.fillStyle=player2.data.color;ctx.textAlign='left';ctx.fillText(p2Wins,CW/2+30,barY+48);
     ctx.font='600 14px "Exo 2"';ctx.fillStyle='#5a5466';ctx.fillText(`Раунд ${roundNum}`,CW/2,barY+48);
   }
@@ -1191,9 +1169,9 @@ function drawBossHUD(time) {
   ctx.fillStyle='rgba(255,255,255,0.15)';ctx.fillRect(x,y,w,h*0.4);
   ctx.font='800 15px "Russo One"';ctx.textAlign='center';ctx.fillStyle='#76ff03';
   ctx.shadowColor='#76ff03';ctx.shadowBlur=12;
-  ctx.fillText('☠ ТЁМНЫЙ СЕРГЕЙ — ВЛАДЫКА БЕЗДНЫ ☠'+(bossIsPlayer?'':' (ИИ)'),CW/2,y-8);
+  ctx.fillText('☠ ТЁМНЫЙ СЕРГЕЙ — ВЛАДЫКА БЕЗДНЫ ☠'+(selection.bossIsPlayer?'':' (ИИ)'),CW/2,y-8);
   ctx.shadowBlur=0;
-  if(bossIsPlayer){
+  if(selection.bossIsPlayer){
     const list=[['light','T'],['heavy','Y'],['spikes','G'],['wave','H'],['rain','V'],['clones','B'],['ulta','N']];
     let px=CW/2-(7*40-6)/2;
     list.forEach(([k,label])=>{
@@ -1219,13 +1197,13 @@ function handleInput() {
     if(keys['KeyF']){player1.attack('light');keys['KeyF']=false;}
     // G босса-игрока зарезервирована под "шипы", поэтому в этом режиме герой бьёт тяжёлым только на X
     const heavyPressed = isBossFight
-      ? (keys['KeyX'] || (!bossIsPlayer && keys['KeyG']))
+      ? (keys['KeyX'] || (!selection.bossIsPlayer && keys['KeyG']))
       : (keys['KeyG'] || keys['KeyX']);
     if(heavyPressed){ player1.attack('heavy'); keys['KeyG']=false; keys['KeyX']=false; }
     if(keys['KeyR']){player1.attack('special');keys['KeyR']=false;}
   }
-  if(isBossFight){ bossIsPlayer?bossHumanInput():bossBotLogic(); }
-  else if(isP2Bot){handleBotLogic();}
+  if(isBossFight){ selection.bossIsPlayer?bossHumanInput():bossBotLogic(); }
+  else if(selection.p2Mode==='bot'){handleBotLogic();}
   else{if(player2.canAct()){player2.vx=0;player2.blocking=false;if(keys['ArrowLeft'])player2.vx=-player2.effSpeed;if(keys['ArrowRight'])player2.vx=player2.effSpeed;if(keys['ArrowUp']&&player2.grounded){player2.vy=-12;player2.grounded=false;player2.y=1;}if(keys['ArrowDown']){player2.blocking=true;player2.vx=0;}if(keys['KeyJ']){player2.attack('light');keys['KeyJ']=false;}if(keys['KeyK']){player2.attack('heavy');keys['KeyK']=false;}if(keys['KeyU']){player2.attack('special');keys['KeyU']=false;}}}
 }
 
@@ -1312,56 +1290,31 @@ function endRound() {
   if(player2.hp<=0)spawnParticles(player2.x,player2.centerY,player2.data.color,40,'hit');
   setTimeout(()=>{if(p1Wins>=2||p2Wins>=2)showWinner();else{roundNum++;startRound();}},2500); }
 
-function startRound() { gameState='fight';roundTimer=99;roundTimerAccum=0;particles=[];screenShake=0;botActionTimer=0;botDecision='idle';bossBotTimer=0;bossBotDecision='idle';
+function startRound() { gameState='fight';roundTimer=ROUND_DURATION_SECONDS;roundTimerAccum=0;resetParticles();screenShake=0;botActionTimer=0;botDecision='idle';bossBotTimer=0;bossBotDecision='idle';
   [player1,player2].forEach((p,i)=>{p.x=isBossFight?(i===0?CW*0.25:CW*0.72):CW*(i===0?0.3:0.7);p.y=0;p.vx=0;p.vy=0;p.hp=p.maxHp;p.displayHp=p.maxHp;p.grounded=true;p.attacking=false;p.blocking=false;p.hurtTimer=0;p.combo=0;p.specialCooldown=0;p.projectile=null;p.slowTimer=0;
     p.bossCD={light:0,heavy:0,spikes:0,wave:0,rain:0,clones:0,ulta:0};p.bossProjectiles=[];p.bossSpikes=null;p.bossWave=null;});
-  koText=isBossFight?(bossIsPlayer?'БОСС ПРОСНУЛСЯ':'БОСС ПРОБУЖДАЕТСЯ...'):`РАУНД ${roundNum}`;koTimer=60; }
+  koText=isBossFight?(selection.bossIsPlayer?'БОСС ПРОСНУЛСЯ':'БОСС ПРОБУЖДАЕТСЯ...'):`РАУНД ${roundNum}`;koTimer=60; }
 
 function showWinner() {
   gameState='win';
-  hideTouchUI();
-  document.getElementById('controlsInfo').style.display='none';
+  hideTouchControls();
+  setControlsInfoVisible(false);
   const w=p1Wins>=1?player1:player2;
-  document.getElementById('winnerName').textContent=w.data.name+(isP2Bot&&!isBossFight&&w.pi!==1?' (БОТ)':'');
+  document.getElementById('winnerName').textContent=w.data.name+(selection.p2Mode==='bot'&&!isBossFight&&w.pi!==1?' (БОТ)':'');
   document.getElementById('winnerName').style.color=w.data.color;
   document.getElementById('winnerLabel').textContent=isBossFight?(p1Wins>=1?'Гигант бездны повержен! Легенда!':'Тёмный Сергей поглотил твою душу...'):'побеждает!';
-  document.getElementById('winScreen').classList.remove('hidden');
+  showScreen('winScreen');
   document.body.classList.remove('fight-active'); }
 
 let lastTime=0;
-function gameLoop(timestamp) { const dt=Math.min((timestamp-lastTime)/1000,0.05);lastTime=timestamp;const time=timestamp/1000; ctx.clearRect(0,0,CW,CH);ctx.save(); if(screenShake>0)ctx.translate((Math.random()-0.5)*screenShake*2,(Math.random()-0.5)*screenShake*2); drawBackground(time); if(gameState==='fight'||gameState==='ko'){if(gameState==='fight')updateFight(dt);else{updateParticles();if(screenShake>0)screenShake*=0.85;if(screenShake<0.5)screenShake=0;}player1.draw(time);player2.draw(time);drawParticles();drawBossFX(time);drawFightUI(time);} ctx.restore();requestAnimationFrame(gameLoop); }
+function gameLoop(timestamp) { const dt=Math.min((timestamp-lastTime)/1000,0.05);lastTime=timestamp;const time=timestamp/1000; ctx.clearRect(0,0,CW,CH);ctx.save(); if(screenShake>0)ctx.translate((Math.random()-0.5)*screenShake*2,(Math.random()-0.5)*screenShake*2); drawBackground(ctx,background,time,isBossFight); if(gameState==='fight'||gameState==='ko'){if(gameState==='fight')updateFight(dt);else{updateParticles();if(screenShake>0)screenShake*=0.85;if(screenShake<0.5)screenShake=0;}player1.draw(time);player2.draw(time);drawParticles(ctx);drawBossFX(time);drawFightUI(time);} ctx.restore();requestAnimationFrame(gameLoop); }
 
-function showSelect(){hideTouchUI();document.getElementById('controlsInfo').style.display='none';document.getElementById('menuScreen').classList.add('hidden');document.getElementById('selectScreen').classList.remove('hidden');selectedP1=null;selectedP2=null;buildCharGrids();}
-function buildCharGrids(){document.getElementById('p1Grid').innerHTML='';document.getElementById('p2Grid').innerHTML='';CHARACTERS.forEach(c=>{document.getElementById('p1Grid').appendChild(createCharCard(c,1));document.getElementById('p2Grid').appendChild(createCharCard(c,2));});}
-function createCharCard(c,player){const darkIcon=c.id==='sofya';const card=document.createElement('div');card.className='char-card';card.dataset.id=c.id;const avatarHtml=c.avatar?`<img src="${c.avatar}" alt="${c.name}" class="char-avatar-img" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" /><div class="char-avatar-fallback" style="display:none;background:${c.color};color:${darkIcon?'#37474f':'#fff'};font-size:${c.icon.length>1?'13px':'17px'}">${c.icon}</div>`:`<div class="char-avatar-fallback" style="background:${c.color};color:${darkIcon?'#37474f':'#fff'};font-size:${c.icon.length>1?'13px':'17px'}">${c.icon}</div>`;card.innerHTML=`<div class="char-avatar" style="border-color:${c.color};background:${c.colorDark||'#1a1a24'}">${avatarHtml}</div><div class="char-name">${c.name}</div><div class="char-stat" style="font-style:italic;color:${c.color}">${c.style}</div><div class="char-stat">ATK</div><div class="stat-bar"><div class="stat-fill" style="width:${c.statATK}%;background:${c.color}"></div></div><div class="char-stat">DEF</div><div class="stat-bar"><div class="stat-fill" style="width:${c.statDEF}%;background:${c.color}"></div></div><div class="char-stat">SPD</div><div class="stat-bar"><div class="stat-fill" style="width:${c.statSPD}%;background:${c.color}"></div></div><div class="char-stat" style="color:var(--accent2)">${c.special}</div>`;card.addEventListener('click',()=>{const grid=player===1?'#p1Grid':'#p2Grid';document.querySelectorAll(`${grid} .char-card`).forEach(el=>el.classList.remove(player===1?'selected-p1':'selected-p2'));card.classList.add(player===1?'selected-p1':'selected-p2');if(player===1)selectedP1=c;else selectedP2=c;checkReady();});return card;}
-function checkReady(){const btn=document.getElementById('startFightBtn');if(selectedP1&&(selectedP2||isBossSel)){btn.style.opacity='1';btn.style.pointerEvents='auto';}else{btn.style.opacity='0.4';btn.style.pointerEvents='none';}}
-
-// НОВОЕ: переключатель "Босс: БОТ / ИГРОК"
-function setBossCtrl(asPlayer){
-  bossIsPlayer=asPlayer;
-  document.getElementById('bossCtrlBot').classList.toggle('active',!asPlayer);
-  document.getElementById('bossCtrlPlayer').classList.toggle('active',asPlayer);
-}
-
-function setP2Mode(mode) {
-  isP2Bot=mode==='bot';isBossSel=mode==='boss';
-  document.getElementById('btnP2Player').classList.toggle('active-p2',mode==='player');
-  document.getElementById('btnP2Bot').classList.toggle('active-p2',mode==='bot');
-  document.getElementById('btnP2Boss').classList.toggle('active-p2',isBossSel);
-  document.getElementById('p2Grid').style.display=isBossSel?'none':'grid';
-  document.getElementById('bossCard').style.display=isBossSel?'flex':'none';
-  // При входе в босс-режим босс по умолчанию — БОТ
-  if(isBossSel) setBossCtrl(false);
-  const hint=document.getElementById('p2ControlsHint');
-  if(hint) hint.style.display=isP2Bot?'none':'inline';
-  if(!isBossSel&&isTouchDevice) document.getElementById('p2TouchControls').style.display=isP2Bot?'none':'flex';
-  checkReady();
-}
+function showSelect(){hideTouchControls();setControlsInfoVisible(false);hideScreen('menuScreen');showScreen('selectScreen');resetSelection();buildCharGrids();}
 
 function updateControlsInfo(){
   const ci=document.getElementById('controlsInfo');
   if(isBossFight){
-    if(bossIsPlayer){
+    if(selection.bossIsPlayer){
       ci.innerHTML='<span><b style="color:var(--accent)">ГЕРОЙ:</b> <kbd>W</kbd> прыжок <kbd>A</kbd><kbd>D</kbd> ход <kbd>S</kbd> блок <kbd>F</kbd> удар <kbd>X</kbd> тяжёлый <kbd>R</kbd> спец</span><span><b style="color:#76ff03">БОСС:</b> <kbd>←</kbd><kbd>→</kbd> ход <kbd>↑</kbd> прыжок <kbd>↓</kbd> блок <kbd>T</kbd> хлыст <kbd>Y</kbd> пасть <kbd>G</kbd> шипы <kbd>H</kbd> волна <kbd>V</kbd> дождь <kbd>B</kbd> клоны <kbd style="color:#ff1744">N</kbd> УЛЬТА</span>';
     } else {
       ci.innerHTML='<span><b style="color:var(--accent)">ГЕРОЙ:</b> <kbd>W</kbd> прыжок <kbd>A</kbd><kbd>D</kbd> ход <kbd>S</kbd> блок <kbd>F</kbd> удар <kbd>G</kbd> тяжёлый <kbd>R</kbd> спец</span><span><b style="color:#76ff03">БОСС: ИИ</b> — уклоняйся и выживай!</span>';
@@ -1372,30 +1325,30 @@ function updateControlsInfo(){
 }
 
 function startFight(){
-  if(!selectedP1||(!selectedP2&&!isBossSel))return;
-  document.getElementById('selectScreen').classList.add('hidden');
+  if(!selection.selectedP1||( !selection.selectedP2 && selection.p2Mode!=='boss'))return;
+  hideScreen('selectScreen');
   document.body.classList.add('fight-active');
-  if(isBossSel){
+  if(selection.p2Mode==='boss'){
     isBossFight=true;
     // На сенсорных экранах босс всегда под управлением ИИ (много клавиш)
-    if(isTouchDevice) bossIsPlayer=false;
-    player1=new Fighter(selectedP1,CW*0.25,1,0);
+    if(isTouchDevice) selection.bossIsPlayer=false;
+    player1=new Fighter(selection.selectedP1,CW*0.25,1,0);
     player2=new Fighter(BOSS_DATA,CW*0.72,-1,1);
     if(isTouchDevice){document.getElementById('touchControls').style.display='flex';document.getElementById('p2TouchControls').style.display='none';}
-    else{document.getElementById('controlsInfo').style.display='flex';updateControlsInfo();}
+    else{setControlsInfoVisible(true);updateControlsInfo();}
   } else {
     isBossFight=false;
-    if(isTouchDevice){document.getElementById('touchControls').style.display='flex';document.getElementById('p2TouchControls').style.display=isP2Bot?'none':'flex';}
-    else{document.getElementById('controlsInfo').style.display='flex';updateControlsInfo();}
-    player1=new Fighter(selectedP1,CW*0.3,1,0);
-    player2=new Fighter(selectedP2,CW*0.7,-1,1);
+    if(isTouchDevice){document.getElementById('touchControls').style.display='flex';document.getElementById('p2TouchControls').style.display=selection.p2Mode==='bot'?'none':'flex';}
+    else{setControlsInfoVisible(true);updateControlsInfo();}
+    player1=new Fighter(selection.selectedP1,CW*0.3,1,0);
+    player2=new Fighter(selection.selectedP2,CW*0.7,-1,1);
   }
   p1Wins=0;p2Wins=0;roundNum=1;
   startRound();
 }
 
-function backToSelect(){ hideTouchUI();document.getElementById('controlsInfo').style.display='none';document.getElementById('winScreen').classList.add('hidden');document.getElementById('selectScreen').classList.remove('hidden'); document.body.classList.remove('fight-active');gameState='menu';isBossFight=false;selectedP1=null;selectedP2=null;buildCharGrids();updateControlsInfo(); }
-function backToMenu(){ hideTouchUI();document.getElementById('controlsInfo').style.display='none';document.getElementById('winScreen').classList.add('hidden');document.getElementById('menuScreen').classList.remove('hidden'); document.body.classList.remove('fight-active');gameState='menu';isBossFight=false; }
+function backToSelect(){ hideTouchControls();setControlsInfoVisible(false);hideScreen('winScreen');showScreen('selectScreen'); document.body.classList.remove('fight-active');gameState='menu';isBossFight=false;resetSelection();buildCharGrids();updateControlsInfo(); }
+function backToMenu(){ hideTouchControls();setControlsInfoVisible(false);hideScreen('winScreen');showScreen('menuScreen'); document.body.classList.remove('fight-active');gameState='menu';isBossFight=false; }
 
 Object.assign(window, { showSelect, setP2Mode, setBossCtrl, startFight, backToSelect, backToMenu });
 updateControlsInfo();
