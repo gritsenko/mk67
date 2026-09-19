@@ -1,0 +1,134 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#14141e"/>
+      <stop offset="50%" stop-color="#0b0b12"/>
+      <stop offset="100%" stop-color="#050508"/>
+    </linearGradient>
+    <linearGradient id="borderGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#a7ffeb"/>
+      <stop offset="50%" stop-color="#1de9b6"/>
+      <stop offset="100%" stop-color="#00875a"/>
+    </linearGradient>
+    <radialGradient id="glowGrad" cx="50%" cy="45%" r="55%">
+      <stop offset="0%" stop-color="#1de9b6" stop-opacity="0.38"/>
+      <stop offset="60%" stop-color="#1de9b6" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#1de9b6" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="neonGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#000" flood-opacity="0.75"/>
+    </filter>
+    
+  </defs>
+
+  <!-- Background -->
+  <rect x="0" y="0" width="512" height="512" rx="32" fill="url(#bgGrad)"/>
+  <circle cx="256" cy="230" r="180" fill="url(#glowGrad)"/>
+
+  <!-- Subtle Cyber Grid -->
+  <g opacity="0.12" stroke="#1de9b6" stroke-width="1">
+    <line x1="60" y1="120" x2="452" y2="120"/>
+    <line x1="60" y1="200" x2="452" y2="200"/>
+    <line x1="60" y1="280" x2="452" y2="280"/>
+    <line x1="60" y1="360" x2="452" y2="360"/>
+    <line x1="140" y1="60" x2="140" y2="420"/>
+    <line x1="256" y1="60" x2="256" y2="420"/>
+    <line x1="372" y1="60" x2="372" y2="420"/>
+  </g>
+
+  <!-- Character Illustration -->
+  <g filter="url(#shadow)">
+    
+      <!-- Grisha Toxicologist Mad Scientist -->
+      <!-- Toxic Acid Bubbles / Droplets -->
+      <circle cx="100" cy="200" r="8" fill="#1de9b6" opacity="0.7" filter="url(#neonGlow)"/>
+      <circle cx="120" cy="160" r="5" fill="#a7ffeb" opacity="0.6"/>
+      <circle cx="395" cy="180" r="10" fill="#1de9b6" opacity="0.7" filter="url(#neonGlow)"/>
+      <circle cx="415" cy="220" r="6" fill="#a7ffeb" opacity="0.5"/>
+
+      <!-- Biohazard Hazard Vest & Lab Coat -->
+      <path d="M 120 400 L 150 280 L 210 268 L 256 295 L 302 268 L 362 280 L 392 400 Z" fill="#1b2e24" stroke="#00875a" stroke-width="3"/>
+      <!-- Lab Apron / Chemical Vest -->
+      <path d="M 175 275 L 210 270 L 225 380 L 160 380 Z" fill="#004d40" stroke="#1de9b6" stroke-width="2"/>
+      <path d="M 337 275 L 302 270 L 287 380 L 352 380 Z" fill="#004d40" stroke="#1de9b6" stroke-width="2"/>
+
+      <!-- Chemical Flasks on Bandolier -->
+      <rect x="200" y="325" width="16" height="32" rx="4" fill="#1de9b6" stroke="#fff" stroke-width="1.5" filter="url(#neonGlow)"/>
+      <rect x="296" y="325" width="16" height="32" rx="4" fill="#1de9b6" stroke="#fff" stroke-width="1.5" filter="url(#neonGlow)"/>
+
+      <!-- Toxic Vapor Mist -->
+      <ellipse cx="256" cy="260" rx="90" ry="25" fill="#1de9b6" opacity="0.25" filter="url(#neonGlow)"/>
+
+      <!-- Head / Hood Base -->
+      <path d="M 180 180 C 180 100 332 100 332 180 L 332 250 C 332 270 300 285 256 285 C 212 285 180 270 180 250 Z" fill="#16251c" stroke="#00875a" stroke-width="3"/>
+      <ellipse cx="256" cy="180" rx="55" ry="58" fill="#d7a98c"/>
+
+      <!-- Biohazard Respirator / Twin-Filter Gas Mask -->
+      <!-- Mask Base -->
+      <path d="M 210 180 L 256 160 L 302 180 L 310 240 L 256 265 L 202 240 Z" fill="#263238" stroke="#004d40" stroke-width="3"/>
+
+      <!-- Glowing Acid Eyes / Respirator Goggles -->
+      <circle cx="228" cy="165" r="22" fill="#1a2e22" stroke="#00875a" stroke-width="3"/>
+      <circle cx="228" cy="165" r="16" fill="#1de9b6" filter="url(#neonGlow)"/>
+      <circle cx="224" cy="161" r="5" fill="#ffffff"/>
+
+      <circle cx="284" cy="165" r="22" fill="#1a2e22" stroke="#00875a" stroke-width="3"/>
+      <circle cx="284" cy="165" r="16" fill="#1de9b6" filter="url(#neonGlow)"/>
+      <circle cx="280" cy="161" r="5" fill="#ffffff"/>
+
+      <!-- Twin Canister Filters -->
+      <rect x="180" y="215" width="34" height="40" rx="8" fill="#37474f" stroke="#1de9b6" stroke-width="2"/>
+      <line x1="184" y1="228" x2="210" y2="228" stroke="#1de9b6" stroke-width="2"/>
+      <line x1="184" y1="238" x2="210" y2="238" stroke="#1de9b6" stroke-width="2"/>
+
+      <rect x="298" y="215" width="34" height="40" rx="8" fill="#37474f" stroke="#1de9b6" stroke-width="2"/>
+      <line x1="302" y1="228" x2="328" y2="228" stroke="#1de9b6" stroke-width="2"/>
+      <line x1="302" y1="238" x2="328" y2="238" stroke="#1de9b6" stroke-width="2"/>
+
+      <!-- Center Exhaust Valve / Drip -->
+      <circle cx="256" cy="226" r="14" fill="#212121" stroke="#1de9b6" stroke-width="2.5"/>
+      <path d="M 254 240 Q 256 256 256 268" stroke="#1de9b6" stroke-width="3" fill="none" filter="url(#neonGlow)"/>
+      <circle cx="256" cy="270" r="3.5" fill="#a7ffeb"/>
+    
+  </g>
+
+  <!-- Arcade Tech Frame -->
+  <rect x="18" y="18" width="476" height="476" rx="24" fill="none" stroke="#00875a" stroke-width="3" opacity="0.6"/>
+  <rect x="24" y="24" width="464" height="464" rx="20" fill="none" stroke="url(#borderGrad)" stroke-width="3.5"/>
+
+  <!-- Corner Tech Brackets -->
+  <g stroke="#a7ffeb" stroke-width="4" fill="none" filter="url(#neonGlow)">
+    <path d="M 28 64 L 28 32 L 64 32"/>
+    <path d="M 448 32 L 484 32 L 484 64"/>
+    <path d="M 28 448 L 28 480 L 64 480"/>
+    <path d="M 448 480 L 484 480 L 484 448"/>
+  </g>
+
+  <!-- Tech Dots / Accents -->
+  <circle cx="36" cy="36" r="3" fill="#a7ffeb"/>
+  <circle cx="476" cy="36" r="3" fill="#a7ffeb"/>
+  <circle cx="36" cy="476" r="3" fill="#a7ffeb"/>
+  <circle cx="476" cy="476" r="3" fill="#a7ffeb"/>
+
+  <!-- Bottom Name Banner -->
+  <g transform="translate(256, 436)" filter="url(#shadow)">
+    <!-- Banner Plate -->
+    <path d="M -160 -24 L 160 -24 L 140 22 L -140 22 Z" fill="#0c0c16" stroke="#1de9b6" stroke-width="2.5"/>
+    <path d="M -152 -20 L 152 -20 L 134 18 L -134 18 Z" fill="none" stroke="#a7ffeb" stroke-width="1" opacity="0.4"/>
+    <!-- Hero Name -->
+    <text x="0" y="-1" text-anchor="middle" font-family="'Russo One', 'Impact', sans-serif" font-size="24" font-weight="900" fill="#ffffff" letter-spacing="2">
+      GRISHA
+    </text>
+    <!-- Archetype / Style Subtitle -->
+    <text x="0" y="15" text-anchor="middle" font-family="'Exo 2', 'Arial', sans-serif" font-size="11" font-weight="800" fill="#a7ffeb" letter-spacing="3">
+      ТОКСИКОЛОГ • BIO-ACID
+    </text>
+  </g>
+</svg>

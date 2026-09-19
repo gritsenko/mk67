@@ -1,0 +1,135 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#14141e"/>
+      <stop offset="50%" stop-color="#0b0b12"/>
+      <stop offset="100%" stop-color="#050508"/>
+    </linearGradient>
+    <linearGradient id="borderGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#b39ddb"/>
+      <stop offset="50%" stop-color="#76ff03"/>
+      <stop offset="100%" stop-color="#0a140a"/>
+    </linearGradient>
+    <radialGradient id="glowGrad" cx="50%" cy="45%" r="55%">
+      <stop offset="0%" stop-color="#76ff03" stop-opacity="0.38"/>
+      <stop offset="60%" stop-color="#76ff03" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#76ff03" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="neonGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#000" flood-opacity="0.75"/>
+    </filter>
+    
+  </defs>
+
+  <!-- Background -->
+  <rect x="0" y="0" width="512" height="512" rx="32" fill="url(#bgGrad)"/>
+  <circle cx="256" cy="230" r="180" fill="url(#glowGrad)"/>
+
+  <!-- Subtle Cyber Grid -->
+  <g opacity="0.12" stroke="#76ff03" stroke-width="1">
+    <line x1="60" y1="120" x2="452" y2="120"/>
+    <line x1="60" y1="200" x2="452" y2="200"/>
+    <line x1="60" y1="280" x2="452" y2="280"/>
+    <line x1="60" y1="360" x2="452" y2="360"/>
+    <line x1="140" y1="60" x2="140" y2="420"/>
+    <line x1="256" y1="60" x2="256" y2="420"/>
+    <line x1="372" y1="60" x2="372" y2="420"/>
+  </g>
+
+  <!-- Character Illustration -->
+  <g filter="url(#shadow)">
+    
+      <!-- Dark Sergey Abyss Giga-Boss -->
+      <!-- Writhing Eldritch Tentacles -->
+      <path d="M 120 280 Q 50 200 40 120 Q 80 150 130 220" fill="#0f1a12" stroke="#76ff03" stroke-width="3" filter="url(#neonGlow)"/>
+      <path d="M 392 280 Q 462 200 472 120 Q 432 150 382 220" fill="#0f1a12" stroke="#76ff03" stroke-width="3" filter="url(#neonGlow)"/>
+      <path d="M 160 360 Q 60 330 30 390 Q 90 390 180 370" fill="#0f1a12" stroke="#9c27b0" stroke-width="2.5"/>
+      <path d="M 352 360 Q 452 330 482 390 Q 422 390 332 370" fill="#0f1a12" stroke="#9c27b0" stroke-width="2.5"/>
+
+      <!-- Void Purple Abyss Core Aura -->
+      <circle cx="256" cy="340" r="50" fill="#9c27b0" opacity="0.4" filter="url(#neonGlow)"/>
+      <circle cx="256" cy="340" r="28" fill="#76ff03" opacity="0.7" filter="url(#neonGlow)"/>
+
+      <!-- Massive Demonic Torso -->
+      <path d="M 100 400 L 130 250 L 210 240 L 256 270 L 302 240 L 382 250 L 412 400 Z" fill="#0a120c" stroke="#76ff03" stroke-width="4"/>
+      <!-- Rib-like Void Carvings -->
+      <path d="M 180 290 Q 256 310 332 290" fill="none" stroke="#76ff03" stroke-width="3" opacity="0.8"/>
+      <path d="M 190 325 Q 256 345 322 325" fill="none" stroke="#76ff03" stroke-width="3" opacity="0.8"/>
+      <path d="M 200 360 Q 256 380 312 360" fill="none" stroke="#76ff03" stroke-width="3" opacity="0.8"/>
+
+      <!-- Monstrous Head -->
+      <ellipse cx="256" cy="175" rx="72" ry="64" fill="#0d150e" stroke="#1f3324" stroke-width="4"/>
+      <!-- Dark Horns / Crest -->
+      <path d="M 190 140 Q 150 70 200 90 Q 220 120 215 140 Z" fill="#0a120c" stroke="#76ff03" stroke-width="2"/>
+      <path d="M 322 140 Q 362 70 312 90 Q 292 120 297 140 Z" fill="#0a120c" stroke="#76ff03" stroke-width="2"/>
+
+      <!-- THREE GLOWING BLOOD-RED EYES -->
+      <!-- Left Eye -->
+      <circle cx="218" cy="155" r="11" fill="#ff1744" filter="url(#neonGlow)"/>
+      <circle cx="218" cy="155" r="4" fill="#ffffff"/>
+      <!-- Right Eye -->
+      <circle cx="294" cy="155" r="11" fill="#ff1744" filter="url(#neonGlow)"/>
+      <circle cx="294" cy="155" r="4" fill="#ffffff"/>
+      <!-- Third Forehead Eye (Bigger) -->
+      <circle cx="256" cy="135" r="14" fill="#ff1744" filter="url(#neonGlow)"/>
+      <circle cx="256" cy="135" r="5" fill="#ffffff"/>
+
+      <!-- Gaping Fanged Maw filled with Purple Abyss Void -->
+      <ellipse cx="256" cy="205" rx="46" ry="24" fill="#030503" stroke="#76ff03" stroke-width="3"/>
+      <ellipse cx="256" cy="205" rx="38" ry="16" fill="#4a148c" opacity="0.9"/>
+
+      <!-- Razor Sharp Upper Fangs -->
+      <polygon points="222,192 228,206 234,192" fill="#e8f5e9"/>
+      <polygon points="234,190 240,208 246,190" fill="#e8f5e9"/>
+      <polygon points="248,189 256,212 264,189" fill="#e8f5e9"/>
+      <polygon points="266,190 272,208 278,190" fill="#e8f5e9"/>
+      <polygon points="278,192 284,206 290,192" fill="#e8f5e9"/>
+
+      <!-- Razor Sharp Lower Fangs -->
+      <polygon points="228,218 234,204 240,218" fill="#e8f5e9"/>
+      <polygon points="242,220 250,202 258,220" fill="#e8f5e9"/>
+      <polygon points="260,220 268,202 276,220" fill="#e8f5e9"/>
+      <polygon points="278,218 284,204 290,218" fill="#e8f5e9"/>
+    
+  </g>
+
+  <!-- Arcade Tech Frame -->
+  <rect x="18" y="18" width="476" height="476" rx="24" fill="none" stroke="#0a140a" stroke-width="3" opacity="0.6"/>
+  <rect x="24" y="24" width="464" height="464" rx="20" fill="none" stroke="url(#borderGrad)" stroke-width="3.5"/>
+
+  <!-- Corner Tech Brackets -->
+  <g stroke="#b39ddb" stroke-width="4" fill="none" filter="url(#neonGlow)">
+    <path d="M 28 64 L 28 32 L 64 32"/>
+    <path d="M 448 32 L 484 32 L 484 64"/>
+    <path d="M 28 448 L 28 480 L 64 480"/>
+    <path d="M 448 480 L 484 480 L 484 448"/>
+  </g>
+
+  <!-- Tech Dots / Accents -->
+  <circle cx="36" cy="36" r="3" fill="#b39ddb"/>
+  <circle cx="476" cy="36" r="3" fill="#b39ddb"/>
+  <circle cx="36" cy="476" r="3" fill="#b39ddb"/>
+  <circle cx="476" cy="476" r="3" fill="#b39ddb"/>
+
+  <!-- Bottom Name Banner -->
+  <g transform="translate(256, 436)" filter="url(#shadow)">
+    <!-- Banner Plate -->
+    <path d="M -160 -24 L 160 -24 L 140 22 L -140 22 Z" fill="#0c0c16" stroke="#76ff03" stroke-width="2.5"/>
+    <path d="M -152 -20 L 152 -20 L 134 18 L -134 18 Z" fill="none" stroke="#b39ddb" stroke-width="1" opacity="0.4"/>
+    <!-- Hero Name -->
+    <text x="0" y="-1" text-anchor="middle" font-family="'Russo One', 'Impact', sans-serif" font-size="24" font-weight="900" fill="#ffffff" letter-spacing="2">
+      DARK SERGEY
+    </text>
+    <!-- Archetype / Style Subtitle -->
+    <text x="0" y="15" text-anchor="middle" font-family="'Exo 2', 'Arial', sans-serif" font-size="11" font-weight="800" fill="#b39ddb" letter-spacing="3">
+      ГИГА-БОСС БЕЗДНЫ
+    </text>
+  </g>
+</svg>

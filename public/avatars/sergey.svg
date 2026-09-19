@@ -1,0 +1,126 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#14141e"/>
+      <stop offset="50%" stop-color="#0b0b12"/>
+      <stop offset="100%" stop-color="#050508"/>
+    </linearGradient>
+    <linearGradient id="borderGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#dcedc8"/>
+      <stop offset="50%" stop-color="#7cb342"/>
+      <stop offset="100%" stop-color="#33691e"/>
+    </linearGradient>
+    <radialGradient id="glowGrad" cx="50%" cy="45%" r="55%">
+      <stop offset="0%" stop-color="#7cb342" stop-opacity="0.38"/>
+      <stop offset="60%" stop-color="#7cb342" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#7cb342" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="neonGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#000" flood-opacity="0.75"/>
+    </filter>
+    
+  </defs>
+
+  <!-- Background -->
+  <rect x="0" y="0" width="512" height="512" rx="32" fill="url(#bgGrad)"/>
+  <circle cx="256" cy="230" r="180" fill="url(#glowGrad)"/>
+
+  <!-- Subtle Cyber Grid -->
+  <g opacity="0.12" stroke="#7cb342" stroke-width="1">
+    <line x1="60" y1="120" x2="452" y2="120"/>
+    <line x1="60" y1="200" x2="452" y2="200"/>
+    <line x1="60" y1="280" x2="452" y2="280"/>
+    <line x1="60" y1="360" x2="452" y2="360"/>
+    <line x1="140" y1="60" x2="140" y2="420"/>
+    <line x1="256" y1="60" x2="256" y2="420"/>
+    <line x1="372" y1="60" x2="372" y2="420"/>
+  </g>
+
+  <!-- Character Illustration -->
+  <g filter="url(#shadow)">
+    
+      <!-- Sergey Commando Soldier -->
+      <!-- Grenade Pin / Smoke Sparks Aura -->
+      <circle cx="95" cy="175" r="12" fill="none" stroke="#7cb342" stroke-width="3" filter="url(#neonGlow)"/>
+      <line x1="95" y1="163" x2="95" y2="155" stroke="#7cb342" stroke-width="3"/>
+      <circle cx="410" cy="160" r="6" fill="#ff7043" filter="url(#neonGlow)"/>
+      <circle cx="430" cy="185" r="4" fill="#ffab91"/>
+
+      <!-- Camouflage Tactical Combat Vest -->
+      <path d="M 120 400 L 150 280 L 210 268 L 256 295 L 302 268 L 362 280 L 392 400 Z" fill="#33691e" stroke="#1b3810" stroke-width="3"/>
+      <!-- Ammo Pouches on Chest -->
+      <rect x="175" y="315" width="28" height="38" rx="4" fill="#558b2f" stroke="#1b3810" stroke-width="2"/>
+      <rect x="215" y="315" width="28" height="38" rx="4" fill="#558b2f" stroke="#1b3810" stroke-width="2"/>
+      <rect x="269" y="315" width="28" height="38" rx="4" fill="#558b2f" stroke="#1b3810" stroke-width="2"/>
+      <rect x="309" y="315" width="28" height="38" rx="4" fill="#558b2f" stroke="#1b3810" stroke-width="2"/>
+
+      <!-- Dog Tags -->
+      <path d="M 235 250 L 250 280 L 256 275 L 245 250" stroke="#cfd8dc" stroke-width="2" fill="none"/>
+      <rect x="246" y="278" width="12" height="18" rx="3" fill="#cfd8dc" stroke="#90a4ae" stroke-width="1.5"/>
+
+      <!-- Face with Battle Scar -->
+      <ellipse cx="256" cy="185" rx="52" ry="58" fill="#d7a98c"/>
+      <!-- Scar across Right Cheek -->
+      <line x1="275" y1="170" x2="285" y2="210" stroke="#8d6e63" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="272" y1="185" x2="282" y2="183" stroke="#8d6e63" stroke-width="1.5"/>
+      <line x1="276" y1="198" x2="286" y2="196" stroke="#8d6e63" stroke-width="1.5"/>
+
+      <!-- Olive Military Beret / Bandana -->
+      <path d="M 195 150 C 195 95 315 95 325 145 L 320 162 L 195 150 Z" fill="#33691e" stroke="#1b3810" stroke-width="2.5"/>
+      <rect x="290" y="130" width="14" height="14" rx="2" fill="#cfd8dc"/>
+
+      <!-- Hardened Grit Eyes -->
+      <ellipse cx="230" cy="180" rx="8" ry="5" fill="#ffffff"/>
+      <ellipse cx="282" cy="180" rx="8" ry="5" fill="#ffffff"/>
+      <circle cx="230" cy="180" r="3.5" fill="#212121"/>
+      <circle cx="282" cy="180" r="3.5" fill="#212121"/>
+      <!-- Tough Brow Lines -->
+      <line x1="220" y1="172" x2="242" y2="175" stroke="#212121" stroke-width="3.5"/>
+      <line x1="292" y1="172" x2="270" y2="175" stroke="#212121" stroke-width="3.5"/>
+
+      <!-- Rugged Stubble & Gritted Mouth -->
+      <ellipse cx="256" cy="225" rx="24" ry="12" fill="#212121" opacity="0.15"/>
+      <line x1="240" y1="224" x2="272" y2="224" stroke="#212121" stroke-width="3.5" stroke-linecap="round"/>
+    
+  </g>
+
+  <!-- Arcade Tech Frame -->
+  <rect x="18" y="18" width="476" height="476" rx="24" fill="none" stroke="#33691e" stroke-width="3" opacity="0.6"/>
+  <rect x="24" y="24" width="464" height="464" rx="20" fill="none" stroke="url(#borderGrad)" stroke-width="3.5"/>
+
+  <!-- Corner Tech Brackets -->
+  <g stroke="#dcedc8" stroke-width="4" fill="none" filter="url(#neonGlow)">
+    <path d="M 28 64 L 28 32 L 64 32"/>
+    <path d="M 448 32 L 484 32 L 484 64"/>
+    <path d="M 28 448 L 28 480 L 64 480"/>
+    <path d="M 448 480 L 484 480 L 484 448"/>
+  </g>
+
+  <!-- Tech Dots / Accents -->
+  <circle cx="36" cy="36" r="3" fill="#dcedc8"/>
+  <circle cx="476" cy="36" r="3" fill="#dcedc8"/>
+  <circle cx="36" cy="476" r="3" fill="#dcedc8"/>
+  <circle cx="476" cy="476" r="3" fill="#dcedc8"/>
+
+  <!-- Bottom Name Banner -->
+  <g transform="translate(256, 436)" filter="url(#shadow)">
+    <!-- Banner Plate -->
+    <path d="M -160 -24 L 160 -24 L 140 22 L -140 22 Z" fill="#0c0c16" stroke="#7cb342" stroke-width="2.5"/>
+    <path d="M -152 -20 L 152 -20 L 134 18 L -134 18 Z" fill="none" stroke="#dcedc8" stroke-width="1" opacity="0.4"/>
+    <!-- Hero Name -->
+    <text x="0" y="-1" text-anchor="middle" font-family="'Russo One', 'Impact', sans-serif" font-size="24" font-weight="900" fill="#ffffff" letter-spacing="2">
+      SERGEY
+    </text>
+    <!-- Archetype / Style Subtitle -->
+    <text x="0" y="15" text-anchor="middle" font-family="'Exo 2', 'Arial', sans-serif" font-size="11" font-weight="800" fill="#dcedc8" letter-spacing="3">
+      КОМАНДОС • ELITE SOLDIER
+    </text>
+  </g>
+</svg>
