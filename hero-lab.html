@@ -4,7 +4,31 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#0a0a0f" />
-    <title>Hero Lab — Друзья Файтинг</title>
+    <title>Hero Lab — Друзья Файтинг | Все 15 бойцов и Гига-Босс</title>
+    <meta name="description" content="Интерактивная лаборатория героев: характеристики, приёмы, урон, анимации всех 15 бойцов и Гига-Босса Тёмного Сергея в Друзья Файтинг." />
+    <link rel="canonical" href="https://gritsenko.github.io/mk67/hero-lab.html" />
+
+    <!-- Open Graph / Telegram / WhatsApp -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://gritsenko.github.io/mk67/hero-lab.html" />
+    <meta property="og:site_name" content="Друзья Файтинг" />
+    <meta property="og:locale" content="ru_RU" />
+    <meta property="og:title" content="Hero Lab — Друзья Файтинг | Все 15 бойцов и Гига-Босс" />
+    <meta property="og:description" content="Характеристики, спецприёмы и анимации всех бойцов игры Друзья Файтинг в одном месте!" />
+    <meta property="og:image" content="https://gritsenko.github.io/mk67/og-cover.png" />
+    <meta property="og:image:secure_url" content="https://gritsenko.github.io/mk67/og-cover.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+
+    <!-- Twitter / X -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://gritsenko.github.io/mk67/hero-lab.html" />
+    <meta name="twitter:title" content="Hero Lab — Друзья Файтинг" />
+    <meta name="twitter:description" content="Характеристики, спецприёмы и анимации всех бойцов игры Друзья Файтинг в одном месте!" />
+    <meta name="twitter:image" content="https://gritsenko.github.io/mk67/og-cover.png" />
+
+    <link rel="image_src" href="https://gritsenko.github.io/mk67/og-cover.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Russo+One&family=Exo+2:wght@300;600;800&display=swap" rel="stylesheet" />
@@ -13,7 +37,12 @@
     <div class="lab-header">
       <a class="back-link" href="./index.html">← В игру</a>
       <h1>HERO LAB</h1>
-      <p class="lab-sub">Характеристики и приёмы всех бойцов в одном месте</p>
+      <p class="lab-sub">Характеристики, приёмы и анимации всех бойцов в одном месте</p>
+      <div class="lab-controls">
+        <span class="lab-controls-label">Вид:</span>
+        <button class="view-mode-btn active" id="btnModeModel">🎮 Бойцы в полный рост</button>
+        <button class="view-mode-btn" id="btnModeArt">🎨 Полные арт-карты</button>
+      </div>
     </div>
     <div class="lab-grid" id="labGrid"></div>
     <div class="lab-boss" id="labBoss"></div>

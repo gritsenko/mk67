@@ -92,7 +92,7 @@ function frameWrapper(name, title, colorPrimary, colorDark, colorLight, innerCon
 </svg>`;
 }
 
-const characters = [
+export const characters = [
   {
     id: 'dima',
     name: 'DIMA',

@@ -1,0 +1,687 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <!-- Standard Glow and Shadow Filters used across all characters -->
+    <filter id="neonGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="5" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#000000" flood-opacity="0.85"/>
+    </filter>
+
+    <filter id="superGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="14" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <filter id="titleGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="12" result="b1"/>
+      <feGaussianBlur stdDeviation="28" result="b2"/>
+      <feMerge>
+        <feMergeNode in="b2"/>
+        <feMergeNode in="b1"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <filter id="titleShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#000000" flood-opacity="0.95"/>
+    </filter>
+
+    <filter id="bigShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#000000" flood-opacity="0.95"/>
+    </filter>
+
+    <filter id="cardShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.85"/>
+    </filter>
+
+    <!-- Background abyss gradient -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#05040a"/>
+      <stop offset="35%" stop-color="#0d0818"/>
+      <stop offset="70%" stop-color="#07120d"/>
+      <stop offset="100%" stop-color="#040607"/>
+    </linearGradient>
+
+    <!-- Floor dark fade gradient -->
+    <linearGradient id="floorGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#000000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#040308" stop-opacity="0.95"/>
+    </linearGradient>
+
+    <!-- Left hero fiery radial glow -->
+    <radialGradient id="heroAura" cx="28%" cy="50%" r="42%">
+      <stop offset="0%" stop-color="#ff4d2a" stop-opacity="0.4"/>
+      <stop offset="50%" stop-color="#ff7043" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#ff4d2a" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Cyan electric sub-glow -->
+    <radialGradient id="cyanAura" cx="16%" cy="58%" r="35%">
+      <stop offset="0%" stop-color="#00e5ff" stop-opacity="0.25"/>
+      <stop offset="60%" stop-color="#00e5ff" stop-opacity="0.05"/>
+      <stop offset="100%" stop-color="#00e5ff" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Right boss toxic abyss radial glow -->
+    <radialGradient id="bossAura" cx="78%" cy="48%" r="48%">
+      <stop offset="0%" stop-color="#76ff03" stop-opacity="0.35"/>
+      <stop offset="35%" stop-color="#9c27b0" stop-opacity="0.3"/>
+      <stop offset="75%" stop-color="#0a140a" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#76ff03" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Central clash explosive burst -->
+    <radialGradient id="clashAura" cx="50%" cy="54%" r="28%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.65"/>
+      <stop offset="25%" stop-color="#ffd54f" stop-opacity="0.45"/>
+      <stop offset="60%" stop-color="#ff5722" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#ff5722" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Title Metallic Fire Gradient -->
+    <linearGradient id="titleGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="18%" stop-color="#fff9c4"/>
+      <stop offset="42%" stop-color="#ffd54f"/>
+      <stop offset="70%" stop-color="#ff6d00"/>
+      <stop offset="92%" stop-color="#e64a19"/>
+      <stop offset="100%" stop-color="#b71c1c"/>
+    </linearGradient>
+
+    <!-- Title Bevel Stroke Gradient -->
+    <linearGradient id="titleStrokeGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="40%" stop-color="#ffe082"/>
+      <stop offset="80%" stop-color="#ff3d00"/>
+      <stop offset="100%" stop-color="#4a0000"/>
+    </linearGradient>
+
+    <!-- Gold Accent Gradient -->
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fffde7"/>
+      <stop offset="40%" stop-color="#ffd54f"/>
+      <stop offset="80%" stop-color="#ff8f00"/>
+      <stop offset="100%" stop-color="#e65100"/>
+    </linearGradient>
+
+    <!-- VS V Gradient (Fire) -->
+    <linearGradient id="vsVGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="30%" stop-color="#ffab91"/>
+      <stop offset="65%" stop-color="#ff3d00"/>
+      <stop offset="100%" stop-color="#b71c1c"/>
+    </linearGradient>
+
+    <!-- VS S Gradient (Gold/Cyan) -->
+    <linearGradient id="vsSGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="30%" stop-color="#ffe082"/>
+      <stop offset="70%" stop-color="#ff9100"/>
+      <stop offset="100%" stop-color="#00e5ff"/>
+    </linearGradient>
+
+    <!-- Boss HP Bar Gradient -->
+    <linearGradient id="bossHpGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#76ff03"/>
+      <stop offset="50%" stop-color="#00e676"/>
+      <stop offset="100%" stop-color="#00b0ff"/>
+    </linearGradient>
+
+    <!-- Play Now Button Gradient -->
+    <linearGradient id="btnGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff8f00"/>
+      <stop offset="45%" stop-color="#ff3d00"/>
+      <stop offset="100%" stop-color="#c62828"/>
+    </linearGradient>
+  </defs>
+
+  <!-- ==================== BACKGROUND LAYER ==================== -->
+  <rect width="1200" height="630" fill="url(#bgGrad)"/>
+
+  <!-- Arena Ambient Lights -->
+  <rect width="1200" height="630" fill="url(#heroAura)"/>
+  <rect width="1200" height="630" fill="url(#cyanAura)"/>
+  <rect width="1200" height="630" fill="url(#bossAura)"/>
+  <rect width="1200" height="630" fill="url(#clashAura)"/>
+
+  <!-- Perspective Arena Grid -->
+  <g><line x1="0" y1="475" x2="1200" y2="475" stroke="#00e5ff" stroke-width="1.2" opacity="0.02"/>
+<line x1="0" y1="499" x2="1200" y2="499" stroke="#00e5ff" stroke-width="1.2" opacity="0.06"/>
+<line x1="0" y1="523" x2="1200" y2="523" stroke="#00e5ff" stroke-width="1.2" opacity="0.10"/>
+<line x1="0" y1="547" x2="1200" y2="547" stroke="#00e5ff" stroke-width="1.2" opacity="0.14"/>
+<line x1="0" y1="571" x2="1200" y2="571" stroke="#00e5ff" stroke-width="1.2" opacity="0.18"/>
+<line x1="0" y1="595" x2="1200" y2="595" stroke="#00e5ff" stroke-width="1.2" opacity="0.22"/>
+<line x1="0" y1="619" x2="1200" y2="619" stroke="#00e5ff" stroke-width="1.2" opacity="0.26"/>
+<line x1="595" y1="380" x2="-300" y2="630" stroke="#76ff03" stroke-width="1" opacity="0.07"/>
+<line x1="595" y1="380" x2="-215" y2="630" stroke="#76ff03" stroke-width="1" opacity="0.07"/>
+<line x1="595" y1="380" x2="-130" y2="630" stroke="#76ff03" stroke-width="1" opacity="0.07"/>
+<line x1="595" y1="380" x2="-45" y2="630" stroke="#76ff03" stroke-width="1" opacity="0.07"/>
+<line x1="595" y1="380" x2="40" y2="630" stroke="#76ff03" stroke-width="1" opacity="0.07"/>
+<line x1="595" y1="380" x2="125" y2="630" stroke="#76ff03" stroke-width="1" opacity="0.07"/>
+<line x1="595" y1="380" x2="210" y2="630" stroke="#76ff03" stroke-width="1" opacity="0.07"/>
+<line x1="595" y1="380" x2="295" y2="630" stroke="#76ff03" stroke-width="1" opacity="0.07"/>
+<line x1="595" y1="380" x2="380" y2="630" stroke="#76ff03" stroke-width="1" opacity="0.07"/>
+<line x1="595" y1="380" x2="465" y2="630" stroke="#76ff03" stroke-width="1" opacity="0.07"/>
+<line x1="595" y1="380" x2="550" y2="630" stroke="#76ff03" stroke-width="1" opacity="0.07"/>
+<line x1="595" y1="380" x2="635" y2="630" stroke="#76ff03" stroke-width="1" opacity="0.07"/>
+<line x1="595" y1="380" x2="720" y2="630" stroke="#76ff03" stroke-width="1" opacity="0.07"/>
+<line x1="595" y1="380" x2="805" y2="630" stroke="#76ff03" stroke-width="1" opacity="0.07"/>
+<line x1="595" y1="380" x2="890" y2="630" stroke="#76ff03" stroke-width="1" opacity="0.07"/>
+<line x1="595" y1="380" x2="975" y2="630" stroke="#76ff03" stroke-width="1" opacity="0.07"/>
+<line x1="595" y1="380" x2="1060" y2="630" stroke="#76ff03" stroke-width="1" opacity="0.07"/>
+<line x1="595" y1="380" x2="1145" y2="630" stroke="#76ff03" stroke-width="1" opacity="0.07"/>
+<line x1="595" y1="380" x2="1230" y2="630" stroke="#76ff03" stroke-width="1" opacity="0.07"/>
+<line x1="595" y1="380" x2="1315" y2="630" stroke="#76ff03" stroke-width="1" opacity="0.07"/>
+<line x1="595" y1="380" x2="1400" y2="630" stroke="#76ff03" stroke-width="1" opacity="0.07"/>
+<line x1="595" y1="380" x2="1485" y2="630" stroke="#76ff03" stroke-width="1" opacity="0.07"/></g>
+
+  <!-- Floor darkening shadow -->
+  <rect y="460" width="1200" height="170" fill="url(#floorGrad)"/>
+
+  <!-- Atmospheric fighting arena energy pillars -->
+  <polygon points="80,0 240,0 360,630 140,630" fill="#ff5722" opacity="0.05"/>
+  <polygon points="980,0 1150,0 1050,630 820,630" fill="#76ff03" opacity="0.05"/>
+  <polygon points="570,0 620,0 650,630 540,630" fill="#ffd54f" opacity="0.04"/>
+
+  <!-- Arena Floor Clashing Energy Rings -->
+  <ellipse cx="595" cy="520" rx="460" ry="80" fill="none" stroke="#ff9100" stroke-width="1.5" opacity="0.25" stroke-dasharray="16,8"/>
+  <ellipse cx="595" cy="520" rx="350" ry="60" fill="none" stroke="#76ff03" stroke-width="2" opacity="0.2" stroke-dasharray="24,12"/>
+  <ellipse cx="595" cy="520" rx="180" ry="32" fill="none" stroke="#00e5ff" stroke-width="2.5" opacity="0.35"/>
+
+
+  <!-- ==================== BOSS SIDE (RIGHT) ==================== -->
+  <!-- Dark Sergey Character Avatar Sprite -->
+  <g transform="translate(680, 50) scale(1.10)" filter="url(#bigShadow)">
+    
+      <!-- Dark Sergey Abyss Giga-Boss -->
+      <!-- Writhing Eldritch Tentacles -->
+      <path d="M 120 280 Q 50 200 40 120 Q 80 150 130 220" fill="#0f1a12" stroke="#76ff03" stroke-width="3" filter="url(#neonGlow)"/>
+      <path d="M 392 280 Q 462 200 472 120 Q 432 150 382 220" fill="#0f1a12" stroke="#76ff03" stroke-width="3" filter="url(#neonGlow)"/>
+      <path d="M 160 360 Q 60 330 30 390 Q 90 390 180 370" fill="#0f1a12" stroke="#9c27b0" stroke-width="2.5"/>
+      <path d="M 352 360 Q 452 330 482 390 Q 422 390 332 370" fill="#0f1a12" stroke="#9c27b0" stroke-width="2.5"/>
+
+      <!-- Void Purple Abyss Core Aura -->
+      <circle cx="256" cy="340" r="50" fill="#9c27b0" opacity="0.4" filter="url(#neonGlow)"/>
+      <circle cx="256" cy="340" r="28" fill="#76ff03" opacity="0.7" filter="url(#neonGlow)"/>
+
+      <!-- Massive Demonic Torso -->
+      <path d="M 100 400 L 130 250 L 210 240 L 256 270 L 302 240 L 382 250 L 412 400 Z" fill="#0a120c" stroke="#76ff03" stroke-width="4"/>
+      <!-- Rib-like Void Carvings -->
+      <path d="M 180 290 Q 256 310 332 290" fill="none" stroke="#76ff03" stroke-width="3" opacity="0.8"/>
+      <path d="M 190 325 Q 256 345 322 325" fill="none" stroke="#76ff03" stroke-width="3" opacity="0.8"/>
+      <path d="M 200 360 Q 256 380 312 360" fill="none" stroke="#76ff03" stroke-width="3" opacity="0.8"/>
+
+      <!-- Monstrous Head -->
+      <ellipse cx="256" cy="175" rx="72" ry="64" fill="#0d150e" stroke="#1f3324" stroke-width="4"/>
+      <!-- Dark Horns / Crest -->
+      <path d="M 190 140 Q 150 70 200 90 Q 220 120 215 140 Z" fill="#0a120c" stroke="#76ff03" stroke-width="2"/>
+      <path d="M 322 140 Q 362 70 312 90 Q 292 120 297 140 Z" fill="#0a120c" stroke="#76ff03" stroke-width="2"/>
+
+      <!-- THREE GLOWING BLOOD-RED EYES -->
+      <!-- Left Eye -->
+      <circle cx="218" cy="155" r="11" fill="#ff1744" filter="url(#neonGlow)"/>
+      <circle cx="218" cy="155" r="4" fill="#ffffff"/>
+      <!-- Right Eye -->
+      <circle cx="294" cy="155" r="11" fill="#ff1744" filter="url(#neonGlow)"/>
+      <circle cx="294" cy="155" r="4" fill="#ffffff"/>
+      <!-- Third Forehead Eye (Bigger) -->
+      <circle cx="256" cy="135" r="14" fill="#ff1744" filter="url(#neonGlow)"/>
+      <circle cx="256" cy="135" r="5" fill="#ffffff"/>
+
+      <!-- Gaping Fanged Maw filled with Purple Abyss Void -->
+      <ellipse cx="256" cy="205" rx="46" ry="24" fill="#030503" stroke="#76ff03" stroke-width="3"/>
+      <ellipse cx="256" cy="205" rx="38" ry="16" fill="#4a148c" opacity="0.9"/>
+
+      <!-- Razor Sharp Upper Fangs -->
+      <polygon points="222,192 228,206 234,192" fill="#e8f5e9"/>
+      <polygon points="234,190 240,208 246,190" fill="#e8f5e9"/>
+      <polygon points="248,189 256,212 264,189" fill="#e8f5e9"/>
+      <polygon points="266,190 272,208 278,190" fill="#e8f5e9"/>
+      <polygon points="278,192 284,206 290,192" fill="#e8f5e9"/>
+
+      <!-- Razor Sharp Lower Fangs -->
+      <polygon points="228,218 234,204 240,218" fill="#e8f5e9"/>
+      <polygon points="242,220 250,202 258,220" fill="#e8f5e9"/>
+      <polygon points="260,220 268,202 276,220" fill="#e8f5e9"/>
+      <polygon points="278,218 284,204 290,218" fill="#e8f5e9"/>
+    
+  </g>
+
+  <!-- Boss Cyber Tag / Nameplate -->
+  <g transform="translate(935, 485)" filter="url(#cardShadow)">
+    <path d="M -180 -24 L 180 -24 L 160 26 L -160 26 Z" fill="#09100a" stroke="#76ff03" stroke-width="2.5"/>
+    <path d="M -173 -19 L 173 -19 L 155 21 L -155 21 Z" fill="none" stroke="#b39ddb" stroke-width="1" opacity="0.4"/>
+    <text x="0" y="-3" text-anchor="middle" font-family="Russo One" font-size="19" fill="#76ff03" letter-spacing="2" filter="url(#neonGlow)">
+      ТЁМНЫЙ СЕРГЕЙ
+    </text>
+    <text x="0" y="17" text-anchor="middle" font-family="Exo 2" font-weight="800" font-size="11" fill="#b39ddb" letter-spacing="2.5">
+      ☠ ГИГА-БОСС БЕЗДНЫ • 420 HP
+    </text>
+  </g>
+
+  <!-- Boss Health Bar -->
+  <g transform="translate(935, 532)" filter="url(#cardShadow)">
+    <rect x="-140" y="-8" width="280" height="17" rx="8.5" fill="#0a120c" stroke="#76ff03" stroke-width="1.8"/>
+    <rect x="-137" y="-5" width="274" height="11" rx="5.5" fill="url(#bossHpGrad)" filter="url(#neonGlow)"/>
+    <text x="0" y="4" text-anchor="middle" font-family="Russo One" font-size="10" fill="#041005" font-weight="900" letter-spacing="1">
+      420 / 420 HP • ФИНАЛЬНЫЙ РАУНД
+    </text>
+  </g>
+
+
+  <!-- ==================== HERO SQUAD SIDE (LEFT) ==================== -->
+  
+  <!-- Character 1: Ilya (Frost Knight, Back-Left) -->
+  <g transform="translate(-15, 65) scale(0.72)" filter="url(#cardShadow)">
+    
+      <!-- Ilya Frost Knight -->
+      <!-- Snow / Ice Crystals Background Aura -->
+      <polygon points="100,180 110,165 100,150 90,165" fill="#b3e5fc" filter="url(#neonGlow)"/>
+      <polygon points="400,160 415,145 400,130 385,145" fill="#b3e5fc" filter="url(#neonGlow)"/>
+      <path d="M 80 280 L 130 260 L 100 310 Z" fill="none" stroke="#448aff" stroke-width="2" opacity="0.6"/>
+      <path d="M 432 280 L 382 260 L 412 310 Z" fill="none" stroke="#448aff" stroke-width="2" opacity="0.6"/>
+
+      <!-- Heavy Ice Plate Armor -->
+      <path d="M 110 400 L 140 280 L 210 265 L 256 295 L 302 265 L 372 280 L 402 400 Z" fill="#1c2c44" stroke="#0d47a1" stroke-width="3"/>
+      <!-- Glacial Shoulder Pauldrons -->
+      <path d="M 120 280 L 175 255 L 195 320 L 135 330 Z" fill="#2c4c70" stroke="#b3e5fc" stroke-width="2.5"/>
+      <path d="M 392 280 L 337 255 L 317 320 L 377 330 Z" fill="#2c4c70" stroke="#b3e5fc" stroke-width="2.5"/>
+      <!-- Ice Spikes on Shoulders -->
+      <polygon points="150,260 140,215 165,255" fill="#b3e5fc" stroke="#448aff" stroke-width="2" filter="url(#neonGlow)"/>
+      <polygon points="362,260 372,215 347,255" fill="#b3e5fc" stroke="#448aff" stroke-width="2" filter="url(#neonGlow)"/>
+
+      <!-- Chestplate Frost Emblem -->
+      <polygon points="256,315 285,350 256,385 227,350" fill="#0d47a1" stroke="#b3e5fc" stroke-width="3"/>
+      <polygon points="256,325 275,350 256,375 237,350" fill="#448aff" filter="url(#neonGlow)"/>
+
+      <!-- Head Base -->
+      <ellipse cx="256" cy="190" rx="50" ry="56" fill="#f0d5c0"/>
+
+      <!-- Ice Crown / Spiked Silver-Frost Hair -->
+      <path d="M 190 170 L 205 110 L 225 150 L 256 95 L 287 150 L 307 110 L 322 170 Z" fill="#e1f5fe" stroke="#448aff" stroke-width="3" filter="url(#neonGlow)"/>
+      <!-- Crown Circlet -->
+      <path d="M 195 160 Q 256 180 317 160 L 317 172 Q 256 192 195 172 Z" fill="#0d47a1" stroke="#b3e5fc" stroke-width="2"/>
+      <polygon points="256,160 264,174 256,184 248,174" fill="#b3e5fc"/>
+
+      <!-- Cold Piercing Blue Glowing Eyes -->
+      <ellipse cx="230" cy="188" rx="10" ry="6" fill="#448aff" filter="url(#neonGlow)"/>
+      <ellipse cx="282" cy="188" rx="10" ry="6" fill="#448aff" filter="url(#neonGlow)"/>
+      <circle cx="230" cy="188" r="3" fill="#ffffff"/>
+      <circle cx="282" cy="188" r="3" fill="#ffffff"/>
+
+      <!-- Determined Knight Mouth -->
+      <line x1="242" y1="225" x2="270" y2="225" stroke="#455a64" stroke-width="3.5" stroke-linecap="round"/>
+    
+  </g>
+
+  <!-- Character 2: Lexa (Heavyweight Bruiser, Back-Center) -->
+  <g transform="translate(160, 65) scale(0.72)" filter="url(#cardShadow)">
+    
+      <!-- Lexa Heavyweight Brawler -->
+      <!-- Violet Lightning Shockwaves -->
+      <path d="M 90 190 L 130 160 L 115 140 L 155 110" fill="none" stroke="#e040fb" stroke-width="3" filter="url(#neonGlow)"/>
+      <path d="M 422 190 L 382 160 L 397 140 L 357 110" fill="none" stroke="#e040fb" stroke-width="3" filter="url(#neonGlow)"/>
+
+      <!-- Muscular Brawler Vest & Broad Shoulders -->
+      <path d="M 100 400 L 130 270 L 205 260 L 256 290 L 307 260 L 382 270 L 412 400 Z" fill="#1a1a2a" stroke="#7b1fa2" stroke-width="4"/>
+      <!-- Gold Chain around Thick Neck -->
+      <path d="M 205 260 Q 256 315 307 260" fill="none" stroke="#ffd600" stroke-width="8" stroke-dasharray="14,4"/>
+      <circle cx="256" cy="298" r="8" fill="#ffd600"/>
+
+      <!-- Massive Face with Beard -->
+      <ellipse cx="256" cy="185" rx="60" ry="64" fill="#d7a98c"/>
+      <!-- Dark Purple Headband -->
+      <rect x="190" y="140" width="132" height="22" rx="4" fill="#7b1fa2" stroke="#e040fb" stroke-width="2"/>
+
+      <!-- Short Spiky Buzz Hair -->
+      <path d="M 194 145 C 194 95 318 95 318 145 Z" fill="#212121"/>
+
+      <!-- Heavy Brow & Furious Purple Eyes -->
+      <path d="M 215 168 L 245 174" stroke="#212121" stroke-width="5" stroke-linecap="round"/>
+      <path d="M 297 168 L 267 174" stroke="#212121" stroke-width="5" stroke-linecap="round"/>
+      <ellipse cx="230" cy="180" rx="9" ry="6" fill="#ffffff"/>
+      <ellipse cx="282" cy="180" rx="9" ry="6" fill="#ffffff"/>
+      <circle cx="230" cy="180" r="4" fill="#e040fb" filter="url(#neonGlow)"/>
+      <circle cx="282" cy="180" r="4" fill="#e040fb" filter="url(#neonGlow)"/>
+
+      <!-- Beard & Intimidating Grin with Gold Tooth -->
+      <path d="M 215 200 C 215 255 297 255 297 200 Z" fill="#212121"/>
+      <path d="M 234 214 Q 256 226 278 214 L 274 226 Q 256 234 238 226 Z" fill="#ffffff"/>
+      <rect x="252" y="217" width="8" height="10" fill="#ffd600"/>
+    
+  </g>
+
+  <!-- Character 3: Artem (Cyber Speedster, Front-Left) -->
+  <g transform="translate(20, 185) scale(0.80)" filter="url(#bigShadow)">
+    
+      <!-- Artem Cyber Speedster Ninja -->
+      <!-- Light-speed Neon Cyan Energy Rings -->
+      <circle cx="256" cy="200" r="160" fill="none" stroke="#00e5ff" stroke-width="2" stroke-dasharray="25,15" opacity="0.6" filter="url(#neonGlow)"/>
+      <path d="M 60 260 L 140 230 L 100 300" fill="none" stroke="#00e5ff" stroke-width="3" filter="url(#neonGlow)"/>
+      <path d="M 452 260 L 372 230 L 412 300" fill="none" stroke="#00e5ff" stroke-width="3" filter="url(#neonGlow)"/>
+
+      <!-- Tech Hoodie & Armor Body -->
+      <path d="M 120 400 L 150 280 L 210 268 L 256 295 L 302 268 L 362 280 L 392 400 Z" fill="#1c252a" stroke="#006064" stroke-width="3"/>
+      <!-- Glowing Cyan Circuit Lines on Suit -->
+      <path d="M 175 285 L 210 275 L 225 385" fill="none" stroke="#00e5ff" stroke-width="3.5" filter="url(#neonGlow)"/>
+      <path d="M 337 285 L 302 275 L 287 385" fill="none" stroke="#00e5ff" stroke-width="3.5" filter="url(#neonGlow)"/>
+
+      <!-- High Tech Face & Mask -->
+      <ellipse cx="256" cy="185" rx="50" ry="56" fill="#ffe0bd"/>
+      <!-- Dark Lower Half Face Mask -->
+      <path d="M 215 195 L 256 210 L 297 195 L 290 245 L 256 258 L 222 245 Z" fill="#263238" stroke="#00e5ff" stroke-width="2"/>
+      <line x1="256" y1="215" x2="256" y2="252" stroke="#00e5ff" stroke-width="2"/>
+
+      <!-- Spiky Wind-swept Hair -->
+      <path d="M 190 160 L 175 110 L 215 125 L 245 75 L 265 115 L 305 85 L 315 130 L 335 115 L 325 165 Z" fill="#212121" stroke="#006064" stroke-width="2"/>
+
+      <!-- Glowing Cyan Cyber Visor -->
+      <rect x="196" y="160" width="120" height="30" rx="8" fill="#002b36" stroke="#00e5ff" stroke-width="3"/>
+      <rect x="204" y="166" width="104" height="18" rx="4" fill="#00e5ff" filter="url(#neonGlow)"/>
+      <line x1="210" y1="175" x2="298" y2="175" stroke="#ffffff" stroke-width="3"/>
+      <circle cx="256" cy="175" r="4" fill="#ffffff"/>
+    
+  </g>
+
+  <!-- Character 4: Dima (Fire Fist Brawler, Front-Leader) -->
+  <g transform="translate(190, 165) scale(0.90)" filter="url(#bigShadow)">
+    
+      <!-- Dima Fire Fist Brawler -->
+      <!-- Fiery Flame Aura -->
+      <path d="M 80 200 Q 120 120 160 170 Q 180 90 230 140 Q 256 60 282 140 Q 332 90 352 170 Q 392 120 432 200" fill="none" stroke="#ff4d2a" stroke-width="4" filter="url(#neonGlow)"/>
+      <circle cx="110" cy="190" r="6" fill="#ff8a65" filter="url(#neonGlow)"/>
+      <circle cx="402" cy="190" r="6" fill="#ff8a65" filter="url(#neonGlow)"/>
+
+      <!-- Jacket / Brawler Vest -->
+      <path d="M 120 400 L 150 280 L 210 268 L 256 295 L 302 268 L 362 280 L 392 400 Z" fill="#2c3e50" stroke="#8b0000" stroke-width="3"/>
+      <!-- Red Fire Flame Emblem on Chest -->
+      <polygon points="256,290 280,350 256,335 232,350" fill="#ff4d2a" filter="url(#neonGlow)"/>
+      <polygon points="256,305 270,345 256,335 242,345" fill="#ffd600"/>
+
+      <!-- Fiery Hands / Fist Glow -->
+      <circle cx="140" cy="340" r="24" fill="#ff4d2a" opacity="0.8" filter="url(#neonGlow)"/>
+      <circle cx="372" cy="340" r="24" fill="#ff4d2a" opacity="0.8" filter="url(#neonGlow)"/>
+
+      <!-- Face -->
+      <ellipse cx="256" cy="185" rx="52" ry="58" fill="#e8b89d"/>
+
+      <!-- Fiery Red-Orange Spiky Hair -->
+      <path d="M 180 160 L 170 100 L 210 120 L 230 70 L 256 110 L 282 65 L 302 115 L 342 95 L 332 165 Z" fill="#ff4d2a" stroke="#8b0000" stroke-width="2.5"/>
+      <path d="M 195 145 L 215 110 L 235 130 L 256 90 L 277 125 L 297 100 L 317 145 Z" fill="#ff8a65"/>
+
+      <!-- Fiery Headband -->
+      <rect x="198" y="152" width="116" height="18" rx="3" fill="#ff8a65" stroke="#8b0000" stroke-width="2"/>
+
+      <!-- Intense Burning Eyes -->
+      <ellipse cx="230" cy="182" rx="9" ry="6" fill="#ffffff"/>
+      <ellipse cx="282" cy="182" rx="9" ry="6" fill="#ffffff"/>
+      <circle cx="230" cy="182" r="4" fill="#ff4d2a"/>
+      <circle cx="282" cy="182" r="4" fill="#ff4d2a"/>
+      <circle cx="231" cy="181" r="1.5" fill="#ffffff"/>
+      <circle cx="283" cy="181" r="1.5" fill="#ffffff"/>
+
+      <!-- Confident Smile -->
+      <path d="M 242 220 Q 256 228 272 220" fill="none" stroke="#8b0000" stroke-width="3" stroke-linecap="round"/>
+    
+  </g>
+
+  <!-- Hero Squad Badge Plate -->
+  <g transform="translate(290, 508)" filter="url(#cardShadow)">
+    <path d="M -180 -18 L 180 -18 L 158 20 L -158 20 Z" fill="#130a1b" stroke="#ff4d2a" stroke-width="2.5"/>
+    <path d="M -172 -13 L 172 -13 L 152 15 L -152 15 Z" fill="none" stroke="#ff8a65" stroke-width="1" opacity="0.4"/>
+    <text x="0" y="3" text-anchor="middle" font-family="Russo One" font-size="14" fill="#ffffff" letter-spacing="2">
+      ⚔ КОМАНДА ГЕРОЕВ • 15 БОЙЦОВ
+    </text>
+    <text x="0" y="16" text-anchor="middle" font-family="Exo 2" font-weight="800" font-size="10" fill="#ff8a65" letter-spacing="2">
+      ДИМА • АРТЁМ • ИЛЬЯ • ЛЁХА И ДР.
+    </text>
+  </g>
+
+
+  <!-- ==================== CENTER CLASH: "VS" IMPACT ==================== -->
+  <g transform="translate(595, 345)" filter="url(#bigShadow)">
+    <!-- Shockwave Burst Rays -->
+    <g stroke="url(#goldGrad)" stroke-width="2" opacity="0.65" filter="url(#neonGlow)">
+      <line x1="0" y1="0" x2="-80" y2="-50"/>
+      <line x1="0" y1="0" x2="80" y2="-50"/>
+      <line x1="0" y1="0" x2="-80" y2="50"/>
+      <line x1="0" y1="0" x2="80" y2="50"/>
+      <line x1="0" y1="0" x2="0" y2="-90"/>
+      <line x1="0" y1="0" x2="0" y2="90"/>
+    </g>
+
+    <!-- Shockwave Rings -->
+    <circle cx="0" cy="0" r="88" fill="none" stroke="#ffd600" stroke-width="2.5" opacity="0.75" stroke-dasharray="14,8" filter="url(#neonGlow)"/>
+    <circle cx="0" cy="0" r="68" fill="none" stroke="#ff3d00" stroke-width="3.5" opacity="0.85" filter="url(#neonGlow)"/>
+    <circle cx="0" cy="0" r="50" fill="#0e0816" stroke="url(#goldGrad)" stroke-width="4"/>
+
+    <!-- Lightning collision bolt -->
+    <path d="M -65 -50 L -20 -15 L 0 5 L -10 25 L 20 50" fill="none" stroke="#00e5ff" stroke-width="4" filter="url(#neonGlow)"/>
+    <path d="M 60 -45 L 20 -10 L 0 5 L 12 30 L -15 55" fill="none" stroke="#76ff03" stroke-width="4" filter="url(#neonGlow)"/>
+
+    <!-- Center Clash Flare -->
+    <circle cx="0" cy="0" r="26" fill="#ffffff" filter="url(#neonGlow)" opacity="0.85"/>
+
+    <!-- "VS" Text -->
+    <!-- Drop Shadow -->
+    <text x="0" y="21" text-anchor="middle" font-family="Russo One" font-size="56" fill="#000000" letter-spacing="2">
+      VS
+    </text>
+    <!-- Main Letter V (Fire) -->
+    <text x="-18" y="19" text-anchor="middle" font-family="Russo One" font-size="54" fill="url(#vsVGrad)" stroke="#ff3d00" stroke-width="1.8">
+      V
+    </text>
+    <!-- Main Letter S (Gold/Cyan) -->
+    <text x="20" y="19" text-anchor="middle" font-family="Russo One" font-size="54" fill="url(#vsSGrad)" stroke="#ffd54f" stroke-width="1.8">
+      S
+    </text>
+  </g>
+
+
+  <!-- ==================== SPARKS & COMBAT PARTICLES ==================== -->
+  <g><circle cx="580" cy="295" r="9" fill="#ffd600" opacity="0.3" filter="url(#superGlow)"/>
+     <circle cx="580" cy="295" r="5" fill="#ffd600" filter="url(#neonGlow)"/>
+     <circle cx="580" cy="295" r="2" fill="#ffffff"/>
+<circle cx="625" cy="310" r="10.8" fill="#ff9100" opacity="0.3" filter="url(#superGlow)"/>
+     <circle cx="625" cy="310" r="6" fill="#ff9100" filter="url(#neonGlow)"/>
+     <circle cx="625" cy="310" r="2.4000000000000004" fill="#ffffff"/>
+<circle cx="550" cy="345" r="7.2" fill="#ffffff" opacity="0.3" filter="url(#superGlow)"/>
+     <circle cx="550" cy="345" r="4" fill="#ffffff" filter="url(#neonGlow)"/>
+     <circle cx="550" cy="345" r="1.6" fill="#ffffff"/>
+<circle cx="640" cy="365" r="9" fill="#ff3d00" opacity="0.3" filter="url(#superGlow)"/>
+     <circle cx="640" cy="365" r="5" fill="#ff3d00" filter="url(#neonGlow)"/>
+     <circle cx="640" cy="365" r="2" fill="#ffffff"/>
+<circle cx="595" cy="245" r="7.2" fill="#ffd600" opacity="0.3" filter="url(#superGlow)"/>
+     <circle cx="595" cy="245" r="4" fill="#ffd600" filter="url(#neonGlow)"/>
+     <circle cx="595" cy="245" r="1.6" fill="#ffffff"/>
+<circle cx="615" cy="415" r="7.2" fill="#00e5ff" opacity="0.3" filter="url(#superGlow)"/>
+     <circle cx="615" cy="415" r="4" fill="#00e5ff" filter="url(#neonGlow)"/>
+     <circle cx="615" cy="415" r="1.6" fill="#ffffff"/>
+<circle cx="545" cy="275" r="6.3" fill="#ff8a65" opacity="0.3" filter="url(#superGlow)"/>
+     <circle cx="545" cy="275" r="3.5" fill="#ff8a65" filter="url(#neonGlow)"/>
+     <circle cx="545" cy="275" r="1.4000000000000001" fill="#ffffff"/>
+<circle cx="655" cy="330" r="8.1" fill="#76ff03" opacity="0.3" filter="url(#superGlow)"/>
+     <circle cx="655" cy="330" r="4.5" fill="#76ff03" filter="url(#neonGlow)"/>
+     <circle cx="655" cy="330" r="1.8" fill="#ffffff"/>
+<circle cx="575" cy="385" r="6.3" fill="#ffeb3b" opacity="0.3" filter="url(#superGlow)"/>
+     <circle cx="575" cy="385" r="3.5" fill="#ffeb3b" filter="url(#neonGlow)"/>
+     <circle cx="575" cy="385" r="1.4000000000000001" fill="#ffffff"/>
+<circle cx="620" cy="265" r="6.3" fill="#ff5722" opacity="0.3" filter="url(#superGlow)"/>
+     <circle cx="620" cy="265" r="3.5" fill="#ff5722" filter="url(#neonGlow)"/>
+     <circle cx="620" cy="265" r="1.4000000000000001" fill="#ffffff"/>
+<circle cx="390" cy="220" r="7.2" fill="#ff4d2a" opacity="0.3" filter="url(#superGlow)"/>
+     <circle cx="390" cy="220" r="4" fill="#ff4d2a" filter="url(#neonGlow)"/>
+     <circle cx="390" cy="220" r="1.6" fill="#ffffff"/>
+<circle cx="440" cy="180" r="6.3" fill="#ff9100" opacity="0.3" filter="url(#superGlow)"/>
+     <circle cx="440" cy="180" r="3.5" fill="#ff9100" filter="url(#neonGlow)"/>
+     <circle cx="440" cy="180" r="1.4000000000000001" fill="#ffffff"/>
+<circle cx="470" cy="260" r="5.4" fill="#ffab40" opacity="0.3" filter="url(#superGlow)"/>
+     <circle cx="470" cy="260" r="3" fill="#ffab40" filter="url(#neonGlow)"/>
+     <circle cx="470" cy="260" r="1.2000000000000002" fill="#ffffff"/>
+<circle cx="210" cy="330" r="6.3" fill="#00e5ff" opacity="0.3" filter="url(#superGlow)"/>
+     <circle cx="210" cy="330" r="3.5" fill="#00e5ff" filter="url(#neonGlow)"/>
+     <circle cx="210" cy="330" r="1.4000000000000001" fill="#ffffff"/>
+<circle cx="140" cy="190" r="7.2" fill="#448aff" opacity="0.3" filter="url(#superGlow)"/>
+     <circle cx="140" cy="190" r="4" fill="#448aff" filter="url(#neonGlow)"/>
+     <circle cx="140" cy="190" r="1.6" fill="#ffffff"/>
+<circle cx="330" cy="160" r="6.3" fill="#e040fb" opacity="0.3" filter="url(#superGlow)"/>
+     <circle cx="330" cy="160" r="3.5" fill="#e040fb" filter="url(#neonGlow)"/>
+     <circle cx="330" cy="160" r="1.4000000000000001" fill="#ffffff"/>
+<circle cx="260" cy="390" r="5.4" fill="#ff5722" opacity="0.3" filter="url(#superGlow)"/>
+     <circle cx="260" cy="390" r="3" fill="#ff5722" filter="url(#neonGlow)"/>
+     <circle cx="260" cy="390" r="1.2000000000000002" fill="#ffffff"/>
+<circle cx="380" cy="410" r="5.4" fill="#ffd54f" opacity="0.3" filter="url(#superGlow)"/>
+     <circle cx="380" cy="410" r="3" fill="#ffd54f" filter="url(#neonGlow)"/>
+     <circle cx="380" cy="410" r="1.2000000000000002" fill="#ffffff"/>
+<circle cx="100" cy="210" r="5.4" fill="#b3e5fc" opacity="0.3" filter="url(#superGlow)"/>
+     <circle cx="100" cy="210" r="3" fill="#b3e5fc" filter="url(#neonGlow)"/>
+     <circle cx="100" cy="210" r="1.2000000000000002" fill="#ffffff"/>
+<circle cx="180" cy="440" r="4.5" fill="#00e5ff" opacity="0.3" filter="url(#superGlow)"/>
+     <circle cx="180" cy="440" r="2.5" fill="#00e5ff" filter="url(#neonGlow)"/>
+     <circle cx="180" cy="440" r="1" fill="#ffffff"/>
+<circle cx="330" cy="460" r="4.5" fill="#ff7043" opacity="0.3" filter="url(#superGlow)"/>
+     <circle cx="330" cy="460" r="2.5" fill="#ff7043" filter="url(#neonGlow)"/>
+     <circle cx="330" cy="460" r="1" fill="#ffffff"/>
+<circle cx="450" cy="340" r="6.3" fill="#ff3d00" opacity="0.3" filter="url(#superGlow)"/>
+     <circle cx="450" cy="340" r="3.5" fill="#ff3d00" filter="url(#neonGlow)"/>
+     <circle cx="450" cy="340" r="1.4000000000000001" fill="#ffffff"/>
+<circle cx="740" cy="220" r="8.1" fill="#76ff03" opacity="0.3" filter="url(#superGlow)"/>
+     <circle cx="740" cy="220" r="4.5" fill="#76ff03" filter="url(#neonGlow)"/>
+     <circle cx="740" cy="220" r="1.8" fill="#ffffff"/>
+<circle cx="805" cy="155" r="6.3" fill="#b39ddb" opacity="0.3" filter="url(#superGlow)"/>
+     <circle cx="805" cy="155" r="3.5" fill="#b39ddb" filter="url(#neonGlow)"/>
+     <circle cx="805" cy="155" r="1.4000000000000001" fill="#ffffff"/>
+<circle cx="710" cy="335" r="7.2" fill="#76ff03" opacity="0.3" filter="url(#superGlow)"/>
+     <circle cx="710" cy="335" r="4" fill="#76ff03" filter="url(#neonGlow)"/>
+     <circle cx="710" cy="335" r="1.6" fill="#ffffff"/>
+<circle cx="865" cy="185" r="8.1" fill="#9c27b0" opacity="0.3" filter="url(#superGlow)"/>
+     <circle cx="865" cy="185" r="4.5" fill="#9c27b0" filter="url(#neonGlow)"/>
+     <circle cx="865" cy="185" r="1.8" fill="#ffffff"/>
+<circle cx="990" cy="210" r="6.3" fill="#76ff03" opacity="0.3" filter="url(#superGlow)"/>
+     <circle cx="990" cy="210" r="3.5" fill="#76ff03" filter="url(#neonGlow)"/>
+     <circle cx="990" cy="210" r="1.4000000000000001" fill="#ffffff"/>
+<circle cx="1060" cy="310" r="7.2" fill="#69f0ae" opacity="0.3" filter="url(#superGlow)"/>
+     <circle cx="1060" cy="310" r="4" fill="#69f0ae" filter="url(#neonGlow)"/>
+     <circle cx="1060" cy="310" r="1.6" fill="#ffffff"/>
+<circle cx="765" cy="425" r="6.3" fill="#76ff03" opacity="0.3" filter="url(#superGlow)"/>
+     <circle cx="765" cy="425" r="3.5" fill="#76ff03" filter="url(#neonGlow)"/>
+     <circle cx="765" cy="425" r="1.4000000000000001" fill="#ffffff"/>
+<circle cx="920" cy="440" r="5.4" fill="#b39ddb" opacity="0.3" filter="url(#superGlow)"/>
+     <circle cx="920" cy="440" r="3" fill="#b39ddb" filter="url(#neonGlow)"/>
+     <circle cx="920" cy="440" r="1.2000000000000002" fill="#ffffff"/>
+<circle cx="1110" cy="250" r="5.4" fill="#76ff03" opacity="0.3" filter="url(#superGlow)"/>
+     <circle cx="1110" cy="250" r="3" fill="#76ff03" filter="url(#neonGlow)"/>
+     <circle cx="1110" cy="250" r="1.2000000000000002" fill="#ffffff"/>
+<circle cx="1040" cy="170" r="6.3" fill="#9c27b0" opacity="0.3" filter="url(#superGlow)"/>
+     <circle cx="1040" cy="170" r="3.5" fill="#9c27b0" filter="url(#neonGlow)"/>
+     <circle cx="1040" cy="170" r="1.4000000000000001" fill="#ffffff"/>
+<circle cx="730" cy="480" r="4.5" fill="#64dd17" opacity="0.3" filter="url(#superGlow)"/>
+     <circle cx="730" cy="480" r="2.5" fill="#64dd17" filter="url(#neonGlow)"/>
+     <circle cx="730" cy="480" r="1" fill="#ffffff"/>
+<circle cx="685" cy="280" r="6.3" fill="#76ff03" opacity="0.3" filter="url(#superGlow)"/>
+     <circle cx="685" cy="280" r="3.5" fill="#76ff03" filter="url(#neonGlow)"/>
+     <circle cx="685" cy="280" r="1.4000000000000001" fill="#ffffff"/></g>
+
+
+  <!-- ==================== TOP TITLE & BRANDING ==================== -->
+  <!-- Header Backdrop Glow -->
+  <rect x="220" y="20" width="760" height="106" rx="28" fill="#06050e" opacity="0.88" filter="url(#titleGlow)"/>
+
+  <g transform="translate(600, 78)" filter="url(#titleShadow)">
+    <!-- Decorative side brackets -->
+    <g stroke="url(#goldGrad)" stroke-width="3" fill="none" filter="url(#neonGlow)">
+      <path d="M -365 -22 L -405 -22 L -425 6 L -405 32 L -365 32"/>
+      <path d="M 365 -22 L 405 -22 L 425 6 L 405 32 L 365 32"/>
+    </g>
+    <!-- Accent jewels -->
+    <polygon points="-420,6 -410,-4 -400,6 -410,16" fill="#ff4d2a" filter="url(#neonGlow)"/>
+    <polygon points="420,6 410,-4 400,6 410,16" fill="#76ff03" filter="url(#neonGlow)"/>
+
+    <!-- Sharp Drop Shadow -->
+    <text x="0" y="5" text-anchor="middle" font-family="Russo One" font-size="62" font-weight="900" fill="#140202" letter-spacing="5">
+      ДРУЗЬЯ ФАЙТИНГ
+    </text>
+    <!-- Main Title Front Face with crisp gradient and border -->
+    <text x="0" y="0" text-anchor="middle" font-family="Russo One" font-size="62" font-weight="900" fill="url(#titleGrad)" stroke="url(#titleStrokeGrad)" stroke-width="2" letter-spacing="5">
+      ДРУЗЬЯ ФАЙТИНГ
+    </text>
+  </g>
+
+  <!-- Subtitle Pill Ribbon -->
+  <g transform="translate(600, 118)" filter="url(#cardShadow)">
+    <rect x="-265" y="-14" width="530" height="28" rx="14" fill="#0e0a17" stroke="url(#goldGrad)" stroke-width="1.8"/>
+    <text x="0" y="5" text-anchor="middle" font-family="Russo One" font-size="13" fill="#ffe082" letter-spacing="2.5">
+      ★ 15 БОЙЦОВ + ГИГА-БОСС • БИТВА В БРАУЗЕРЕ ★
+    </text>
+  </g>
+
+
+  <!-- ==================== BOTTOM FEATURE PILLS ==================== -->
+  <g transform="translate(600, 588)" filter="url(#cardShadow)">
+    <!-- Pill 1: 1 vs 1 -->
+    <g transform="translate(-420, 0)">
+      <rect x="-95" y="-17" width="190" height="34" rx="17" fill="#0d101c" stroke="#448aff" stroke-width="1.8"/>
+      <text x="0" y="5" text-anchor="middle" font-family="Russo One" font-size="12" fill="#b3e5fc" letter-spacing="1">
+        ⚔ 1 VS 1 И БОТ
+      </text>
+    </g>
+
+    <!-- Pill 2: 15 Fighters -->
+    <g transform="translate(-140, 0)">
+      <rect x="-105" y="-17" width="210" height="34" rx="17" fill="#150e1c" stroke="#e040fb" stroke-width="1.8"/>
+      <text x="0" y="5" text-anchor="middle" font-family="Russo One" font-size="12" fill="#f48fb1" letter-spacing="1">
+        ⚡ 15 УНИКАЛЬНЫХ БОЙЦОВ
+      </text>
+    </g>
+
+    <!-- Pill 3: Boss Raid -->
+    <g transform="translate(140, 0)">
+      <rect x="-100" y="-17" width="200" height="34" rx="17" fill="#0d170e" stroke="#76ff03" stroke-width="1.8"/>
+      <text x="0" y="5" text-anchor="middle" font-family="Russo One" font-size="12" fill="#b9f6ca" letter-spacing="1">
+        ☠ РЕЙД НА БОССА
+      </text>
+    </g>
+
+    <!-- Pill 4: Play Now CTA Button -->
+    <g transform="translate(420, 0)">
+      <rect x="-95" y="-18" width="190" height="36" rx="18" fill="url(#btnGrad)" stroke="#ffe082" stroke-width="2" filter="url(#neonGlow)"/>
+      <text x="0" y="5" text-anchor="middle" font-family="Russo One" font-size="13" fill="#ffffff" letter-spacing="1.5">
+        ▶ ИГРАТЬ СЕЙЧАС
+      </text>
+    </g>
+  </g>
+
+
+  <!-- ==================== ARCADE TECH BORDER & CORNERS ==================== -->
+  <!-- Subtle Outer Border -->
+  <rect x="12" y="12" width="1176" height="606" rx="18" fill="none" stroke="#1c162e" stroke-width="3"/>
+  <rect x="16" y="16" width="1168" height="598" rx="14" fill="none" stroke="#ff4d2a" stroke-width="1.5" opacity="0.4"/>
+
+  <!-- High-Tech Glowing Corner Brackets -->
+  <g stroke="url(#goldGrad)" stroke-width="4" fill="none" filter="url(#neonGlow)">
+    <!-- Top-Left -->
+    <path d="M 22 64 L 22 22 L 64 22"/>
+    <!-- Top-Right -->
+    <path d="M 1136 22 L 1178 22 L 1178 64"/>
+    <!-- Bottom-Left -->
+    <path d="M 22 566 L 22 608 L 64 608"/>
+    <!-- Bottom-Right -->
+    <path d="M 1136 608 L 1178 608 L 1178 566"/>
+  </g>
+
+  <!-- Corner Tech Dots -->
+  <circle cx="30" cy="30" r="4" fill="#ffd54f" filter="url(#neonGlow)"/>
+  <circle cx="1170" cy="30" r="4" fill="#76ff03" filter="url(#neonGlow)"/>
+  <circle cx="30" cy="600" r="4" fill="#00e5ff" filter="url(#neonGlow)"/>
+  <circle cx="1170" cy="600" r="4" fill="#ffd54f" filter="url(#neonGlow)"/>
+
+</svg>
