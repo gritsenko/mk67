@@ -1,4 +1,4 @@
-export type ScreenId = 'menuScreen' | 'selectScreen' | 'winScreen' | 'pauseScreen';
+export type ScreenId = 'menuScreen' | 'selectScreen' | 'winScreen' | 'pauseScreen' | 'campaignScreen';
 
 function getScreen(id: ScreenId) {
   return document.getElementById(id);

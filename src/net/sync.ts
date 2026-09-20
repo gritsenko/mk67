@@ -29,7 +29,21 @@ export const FIGHTER_FIELDS = [
 /** Индексы полей, которые интерполируются, — их нельзя просто защёлкивать. */
 export const IDX_X = 0;
 export const IDX_Y = 1;
+export const IDX_VX = 2;
+export const IDX_VY = 3;
 export const IDX_HP = 5;
+const IDX_ATTACKING = 9;
+const IDX_ATTACK_TYPE = 10;
+const IDX_ATTACK_TIMER = 11;
+
+/**
+ * Поля, которые можно смешивать линейно.
+ *
+ * hp и combo сюда намеренно не входят: по ним гость ловит момент попадания
+ * (упало — сыпем искры). Плавно сползающее hp срабатывало бы каждый кадр.
+ * Полоса здоровья всё равно рисуется по displayHp, а он интерполируется.
+ */
+const BLEND_FIELDS = new Set([0, 1, 2, 3, 6, 11, 14, 16, 17, 18, 19]);
 
 export type FighterTuple = unknown[];
 
@@ -140,4 +154,154 @@ export function applyProjectile(
   state: ProjectileState | null
 ): void {
   fighter.projectile = state ? { ...state } : null;
+}
+
+
+/* ------------------------------------------------- интерполяция чужого */
+
+/**
+ * Буфер снимков для бойца, которым управляет соперник.
+ *
+ * Снимки приходят 20 раз в секунду, а рисуем мы 60: если просто защёлкивать
+ * позицию по приходу пакета, чужой боец дёргается — визуально это и читается
+ * как «у него 20 fps». Вместо этого храним последние снимки и рисуем бойца
+ * в прошлом, на INTERP_DELAY_MS назад, смешивая два соседних снимка. Тогда
+ * между пакетами всегда есть куда двигаться, а дрожание сети съедается
+ * запасом буфера.
+ *
+ * Плата — постоянная задержка отрисовки чужого бойца. Для гостя это не
+ * ухудшает управление: свой боец предсказывается локально и на буфер не
+ * смотрит, а попадания всё равно считает хост.
+ */
+export const INTERP_DELAY_MS = 100;
+
+/** Пакетов нет — короткое время досчитываем по скорости, потом замираем. */
+const MAX_EXTRAPOLATION_MS = 120;
+
+/** Такое расхождение — это не сеть, а новый раунд: туда телепортируем. */
+const TELEPORT_DISTANCE = 80;
+
+/** Игровая логика считает в кадрах по 60 fps — переводим миллисекунды в них. */
+const MS_PER_FRAME = 1000 / 60;
+
+interface RemoteSample {
+  /** Момент получения по локальным часам. */
+  t: number;
+  f: FighterTuple;
+  p: ProjectileState | null;
+}
+
+export interface RemoteFrame {
+  f: FighterTuple;
+  p: ProjectileState | null;
+}
+
+function num(value: unknown): number {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function lerp(a: number, b: number, t: number): number {
+  return a + (b - a) * t;
+}
+
+function blendFighters(
+  a: FighterTuple,
+  b: FighterTuple,
+  t: number,
+  spanMs: number
+): FighterTuple {
+  const out: unknown[] = new Array(FIGHTER_FIELDS.length);
+  // Атака идёт по своему таймеру: смешивать его можно, только если в обоих
+  // снимках это один и тот же удар. Иначе досчитываем от старого снимка сами.
+  const sameAttack =
+    a[IDX_ATTACKING] === b[IDX_ATTACKING] && a[IDX_ATTACK_TYPE] === b[IDX_ATTACK_TYPE];
+
+  for (let i = 0; i < FIGHTER_FIELDS.length; i++) {
+    if (!BLEND_FIELDS.has(i)) {
+      // Дискретные поля (facing, grounded, attacking, hp…) берём из снимка,
+      // до которого уже дожили: так событие случается один раз и вовремя.
+      out[i] = a[i];
+      continue;
+    }
+
+    const from = num(a[i]), to = num(b[i]);
+
+    if (i === IDX_X || i === IDX_Y) {
+      out[i] = Math.abs(to - from) > TELEPORT_DISTANCE ? to : lerp(from, to, t);
+      continue;
+    }
+    if (i === IDX_ATTACK_TIMER && !sameAttack) {
+      // Удар начался или кончился между снимками: смешивать таймеры разных
+      // ударов нельзя, поэтому просто крутим таймер старого снимка дальше.
+      out[i] = Math.max(0, from - (t * spanMs) / MS_PER_FRAME);
+      continue;
+    }
+    // animFrame/animTimer только растут; падение значения — сброс, не движение.
+    if ((i === 17 || i === 18) && to < from) {
+      out[i] = from;
+      continue;
+    }
+    out[i] = lerp(from, to, t);
+  }
+  return out;
+}
+
+function extrapolateFighter(a: FighterTuple, aheadMs: number): FighterTuple {
+  if (aheadMs <= 0) return a;
+  const frames = aheadMs / MS_PER_FRAME;
+  const out = a.slice();
+  out[IDX_X] = num(a[IDX_X]) + num(a[IDX_VX]) * frames;
+  out[IDX_ATTACK_TIMER] = Math.max(0, num(a[IDX_ATTACK_TIMER]) - frames);
+  out[17] = num(a[17]) + frames / 8;
+  return out;
+}
+
+function blendProjectiles(
+  a: ProjectileState | null,
+  b: ProjectileState | null,
+  t: number
+): ProjectileState | null {
+  if (!a) return null;
+  // Снаряд появился или исчез между снимками — смешивать нечего.
+  if (!b) return { ...a };
+  return { ...a, x: lerp(a.x, b.x, t), y: lerp(a.y, b.y, t) };
+}
+
+export class RemoteFighterBuffer {
+  private samples: RemoteSample[] = [];
+
+  reset(): void {
+    this.samples.length = 0;
+  }
+
+  push(t: number, f: FighterTuple, p: ProjectileState | null): void {
+    this.samples.push({ t, f, p });
+    // Больше десятка снимков — это полсекунды истории: столько не нужно даже
+    // при рывках сети, а расти буфер без предела не должен.
+    if (this.samples.length > 12) this.samples.shift();
+  }
+
+  /** Состояние чужого бойца на момент отрисовки. null — снимков ещё не было. */
+  sample(now: number): RemoteFrame | null {
+    if (!this.samples.length) return null;
+
+    const target = now - INTERP_DELAY_MS;
+    // Оставляем в буфере ровно один снимок раньше цели — он левая граница.
+    while (this.samples.length > 1 && this.samples[1].t <= target) this.samples.shift();
+
+    const a = this.samples[0];
+    const b = this.samples[1];
+
+    if (!b) {
+      const ahead = Math.min(Math.max(target - a.t, 0), MAX_EXTRAPOLATION_MS);
+      return { f: extrapolateFighter(a.f, ahead), p: a.p };
+    }
+    // Буфер ещё наполняется: до первого снимка «дожить» не успели.
+    if (target <= a.t) return { f: a.f, p: a.p };
+
+    const span = b.t - a.t;
+    const k = span > 0 ? Math.min((target - a.t) / span, 1) : 1;
+    return { f: blendFighters(a.f, b.f, k, span), p: blendProjectiles(a.p, b.p, k) };
+  }
 }

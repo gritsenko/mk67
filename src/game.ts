@@ -1,20 +1,46 @@
 // @ts-nocheck
 import { BOSS_DATA, BOSS_MOVES, CHARACTERS } from './data/characters';
 import { BOSS_SCALE, GAME_HEIGHT as CH, GAME_WIDTH as CW, PLAYER_SCALE as SCALE, ROUND_DURATION_SECONDS } from './game/config';
-import { selection, resetSelection, buildCharGrids, checkReady, setBossCtrl, setP2Mode } from './scenes/selectionScene';
-import { hideScreen, hideTouchControls, setControlsInfoVisible, showScreen, showTouchControls, setFightHudVisible } from './scenes/screenManager';
+import { selection, resetSelection, buildCharGrids, checkReady, setBossCtrl, setP2Mode, isCampaignSelectMode, setCampaignSelectMode } from './scenes/selectionScene';
+import { initCampaign, getCampaignState, getCurrentCampaignOpponent, getCampaignHero, advanceCampaign, resetCampaign, renderCampaignScreen } from './scenes/campaignScene';
+import { hideScreen, hideTouchControls as hideTouchControlsDom, setControlsInfoVisible, showScreen, showTouchControls, setFightHudVisible } from './scenes/screenManager';
 import { createBackground, drawBackground } from './systems/background';
 import { drawParticles, resetParticles, spawnParticles, updateParticles } from './systems/particles';
 import { recordWin } from './net/leaderboard';
 import { getRole, leaveRoom, sendInput, sendState } from './net/match';
-import { ATTACK, HOLD, applyFighter, applyProjectile, captureFighter, captureProjectile } from './net/sync';
+import { ATTACK, HOLD, RemoteFighterBuffer, applyFighter, applyProjectile, captureFighter, captureProjectile } from './net/sync';
 
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-canvas.width = CW; canvas.height = CH;
+/* Логические координаты игры всегда CW x CH, но CSS растягивает полотно на
+   весь экран. Чтобы на больших мониторах картинка не была мыльной, буфер
+   делаем крупнее (до MAX_RENDER_SCALE), а масштаб задаём трансформацией в
+   начале кадра — игровой код продолжает рисовать в прежних координатах. */
+const MAX_RENDER_SCALE = 2;
+let renderScale = 1;
+
+function syncCanvasResolution() {
+  const dpr = window.devicePixelRatio || 1;
+  const boxW = canvas.clientWidth || CW;
+  const boxH = canvas.clientHeight || CH;
+  // object-fit: contain — реально видимая ширина ограничена и высотой блока.
+  const shownW = Math.min(boxW, boxH * (CW / CH));
+  const wanted = Math.round(Math.min(MAX_RENDER_SCALE, Math.max(1, (shownW * dpr) / CW)) * 100) / 100;
+  if (wanted === renderScale && canvas.width === Math.round(CW * wanted)) return;
+  renderScale = wanted;
+  canvas.width = Math.round(CW * wanted);
+  canvas.height = Math.round(CH * wanted);
+}
+
+syncCanvasResolution();
+// Первый вызов может случиться до раскладки — перепроверяем на первом кадре.
+requestAnimationFrame(syncCanvasResolution);
+window.addEventListener('resize', syncCanvasResolution);
+window.addEventListener('orientationchange', syncCanvasResolution);
 
 let gameState = 'menu';
 let isBossFight = false;
+let isCampaign = false;
 let player1, player2, screenShake = 0, roundTimer = ROUND_DURATION_SECONDS, roundTimerAccum = 0, roundNum = 1, p1Wins = 0, p2Wins = 0, koText = '', koTimer = 0;
 const background = createBackground();
 let botActionTimer = 0, botDecision = 'idle';
@@ -33,6 +59,12 @@ let pendingGuestAttacks = 0, inputSeq = 0, lastHoldSent = -1, lastInputSentAt = 
 // Гость: номер последнего применённого снимка — пакеты могут прийти не по порядку.
 let lastAppliedSnapshotSeq = -1;
 let snapshotSeq = 0, lastSnapshotSentAt = 0;
+/**
+ * Гость: снимки чужого бойца ждут здесь своей очереди на отрисовку.
+ * Благодаря этому между пакетами есть что показывать, и чужой боец
+ * движется плавно, а не рывками по 20 раз в секунду.
+ */
+const remoteBuffer = new RemoteFighterBuffer();
 
 /** Снимки 20 раз в секунду: хватает, потому что гость предсказывает движение локально. */
 const SNAPSHOT_INTERVAL_MS = 50;
@@ -57,14 +89,69 @@ window.addEventListener('keydown', e => {
 });
 window.addEventListener('keyup', e => { if (isTextEntry(e.target)) return; keys[e.code] = false; });
 
+/**
+ * Принудительный показ экранного геймпада: ?touch=1 в адресной строке.
+ * Нужен для отладки с обычного десктопа, где сенсора нет и панель иначе
+ * не появляется вовсе. Кнопки работают и мышью — они на pointer-событиях.
+ */
+function touchForcedByUrl() {
+  try {
+    return new URLSearchParams(location.search).get('touch') === '1';
+  } catch {
+    return false;
+  }
+}
+
 function checkMobileDevice() {
   const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
   const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-  if (hasTouch || isMobileUA) {
+  if (hasTouch || isMobileUA || touchForcedByUrl()) {
     isTouchDevice = true;
     document.body.classList.add('is-mobile');
     setupTouchControls();
   }
+}
+
+/**
+ * Клавиши, которые на сенсоре работают как одиночное нажатие, а не удержание.
+ * Игровой код гасит их сам, когда применит удар (keys[...] = false).
+ */
+const TOUCH_TAP_KEYS = new Set(['KeyF', 'KeyG', 'KeyX', 'KeyR', 'KeyJ', 'KeyK', 'KeyU']);
+
+/**
+ * Сколько ещё «держится» нажатие удара после того, как палец убрали.
+ *
+ * Удар применяется только когда боец свободен: тап во время своей же анимации
+ * или прилёта иначе просто пропадал бы. Полтора десятка кадров запаса — это
+ * обычный input buffer файтинга: связки перестают срываться, а случайных
+ * повторов ещё не появляется.
+ */
+const TOUCH_TAP_BUFFER_MS = 150;
+
+/** Отложенное гашение тапов: ключ -> id таймера. */
+const touchTapTimers = {};
+
+/** Сколько пальцев сейчас держит каждую клавишу — кнопок с одним data-key больше одной. */
+const touchKeyHolders = {};
+
+/** Убирает всё нажатое с сенсора: панель прячется, пауза, уход со вкладки. */
+function resetTouchInput() {
+  for (const key of Object.keys(touchKeyHolders)) {
+    keys[key] = false;
+    delete touchKeyHolders[key];
+  }
+  for (const key of Object.keys(touchTapTimers)) {
+    clearTimeout(touchTapTimers[key]);
+    delete touchTapTimers[key];
+  }
+  const touchEl = document.getElementById('touchControls');
+  if (touchEl) touchEl.querySelectorAll('.pressed').forEach(el => el.classList.remove('pressed'));
+}
+
+/** Панель уезжает вместе со всем, что на ней было зажато. */
+function hideTouchControls() {
+  resetTouchInput();
+  hideTouchControlsDom();
 }
 
 function setupTouchControls() {
@@ -72,10 +159,11 @@ function setupTouchControls() {
   const touchEl = document.getElementById('touchControls');
   if (!touchEl) return;
   touchControlsInitialized = true;
-  const activeTouches = {};
+  /** Указатель (палец/мышь/перо) -> клавиша, которую он сейчас держит. */
+  const activePointers = {};
 
-  function getKeyFromTouch(touch) {
-    const el = document.elementFromPoint(touch.clientX, touch.clientY);
+  function getKeyFromPoint(clientX, clientY) {
+    const el = document.elementFromPoint(clientX, clientY);
     const btn = el ? el.closest('[data-key]') : null;
     return btn ? btn.dataset.key : null;
   }
@@ -86,45 +174,81 @@ function setupTouchControls() {
     btns.forEach(b => b.classList.toggle('pressed', pressed));
   }
 
-  function handleTouchStartOrMove(e) {
-    e.preventDefault();
-    for (let i = 0; i < e.changedTouches.length; i++) {
-      const touch = e.changedTouches[i];
-      const newKey = getKeyFromTouch(touch);
-      const oldKey = activeTouches[touch.identifier];
-      if (oldKey !== newKey) {
-        if (oldKey) {
-          keys[oldKey] = false;
-          setBtnVisual(oldKey, false);
-          delete activeTouches[touch.identifier];
-        }
-        if (newKey) {
-          activeTouches[touch.identifier] = newKey;
-          keys[newKey] = true;
-          setBtnVisual(newKey, true);
-        }
-      }
-    }
+  function pressKey(key) {
+    if (touchTapTimers[key]) { clearTimeout(touchTapTimers[key]); delete touchTapTimers[key]; }
+    touchKeyHolders[key] = (touchKeyHolders[key] || 0) + 1;
+    keys[key] = true;
+    setBtnVisual(key, true);
   }
 
-  function handleTouchEnd(e) {
-    e.preventDefault();
-    for (let i = 0; i < e.changedTouches.length; i++) {
-      const touch = e.changedTouches[i];
-      const oldKey = activeTouches[touch.identifier];
-      if (oldKey) {
-        keys[oldKey] = false;
-        setBtnVisual(oldKey, false);
-        delete activeTouches[touch.identifier];
-      }
-    }
+  function releaseKey(key) {
+    // Одна клавиша может висеть на нескольких кнопках (блок — и на крестовине,
+    // и отдельной кнопкой). Отпускаем её, только когда ушёл последний палец.
+    const left = (touchKeyHolders[key] || 1) - 1;
+    if (left > 0) { touchKeyHolders[key] = left; return; }
+    delete touchKeyHolders[key];
+    setBtnVisual(key, false);
+
+    if (!TOUCH_TAP_KEYS.has(key)) { keys[key] = false; return; }
+    // Удар доживает свой буфер: вдруг боец освободится через пару кадров.
+    touchTapTimers[key] = setTimeout(() => {
+      delete touchTapTimers[key];
+      if (!touchKeyHolders[key]) keys[key] = false;
+    }, TOUCH_TAP_BUFFER_MS);
   }
 
-  touchEl.addEventListener('touchstart', handleTouchStartOrMove, { passive: false });
-  touchEl.addEventListener('touchmove', handleTouchStartOrMove, { passive: false });
-  touchEl.addEventListener('touchend', handleTouchEnd, { passive: false });
-  touchEl.addEventListener('touchcancel', handleTouchEnd, { passive: false });
+  /** Перевести указатель на другую кнопку (или ни на какую). */
+  function moveTo(pointerId, newKey) {
+    const oldKey = activePointers[pointerId];
+    if (oldKey === newKey) return;
+    if (oldKey) { releaseKey(oldKey); delete activePointers[pointerId]; }
+    if (newKey) { activePointers[pointerId] = newKey; pressKey(newKey); }
+  }
+
+  function handlePointerDown(e) {
+    const key = getKeyFromPoint(e.clientX, e.clientY);
+    if (!key) return;
+    // Гасим и прокрутку, и выделение, и эмуляцию мыши после тапа.
+    e.preventDefault();
+    moveTo(e.pointerId, key);
+  }
+
+  /**
+   * Движение слушаем на window, а не на панели: палец, соскользнувший с кнопки
+   * мимо неё, иначе «залипал» бы нажатым — события уходили бы уже не нам.
+   * Поэтому же здесь нет setPointerCapture: он приклеил бы указатель к первой
+   * кнопке, а скольжение между кнопками — штатный способ играть.
+   */
+  function handlePointerMove(e) {
+    if (!(e.pointerId in activePointers)) return;
+    // Мышь: кнопку отпустили вне окна — считаем нажатие законченным.
+    if (e.pointerType === 'mouse' && e.buttons === 0) { moveTo(e.pointerId, null); return; }
+    e.preventDefault();
+    moveTo(e.pointerId, getKeyFromPoint(e.clientX, e.clientY));
+  }
+
+  function handlePointerUp(e) {
+    if (!(e.pointerId in activePointers)) return;
+    e.preventDefault();
+    moveTo(e.pointerId, null);
+  }
+
+  function releaseAllPointers() {
+    for (const id of Object.keys(activePointers)) delete activePointers[id];
+    resetTouchInput();
+  }
+
+  touchEl.addEventListener('pointerdown', handlePointerDown, { passive: false });
+  window.addEventListener('pointermove', handlePointerMove, { passive: false });
+  window.addEventListener('pointerup', handlePointerUp, { passive: false });
+  window.addEventListener('pointercancel', handlePointerUp, { passive: false });
   touchEl.addEventListener('contextmenu', e => e.preventDefault());
+
+  // Палец мог остаться «зажатым», если экран сменился прямо во время нажатия.
+  window.addEventListener('blur', releaseAllPointers);
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) releaseAllPointers();
+  });
 }
 
 checkMobileDevice();
@@ -1445,14 +1569,54 @@ function updateFight(dt) {
  */
 function updateFightGuest(dt){
   stepGuestInput();
-  if(!player1.attacking)player1.facing=player1.x<player2.x?1:-1;
+  applyRemoteFrame();
   if(!player2.attacking)player2.facing=player2.x<player1.x?1:-1;
-  player1.update();player2.update();pushBodies();
-  if(!player1.attacking)player1.combo=0;if(!player2.attacking)player2.combo=0;
+  player2.update();
+  separateFromRemote();
+  if(!player2.attacking)player2.combo=0;
   updateParticles();
   if(screenShake>0)screenShake*=0.85;if(screenShake<0.5)screenShake=0;
   // Таймер придёт в следующем снимке, но между пакетами тикаем сами.
   roundTimerAccum+=dt;if(roundTimerAccum>=1){roundTimerAccum=0;roundTimer=Math.max(0,roundTimer-1);}
+}
+
+/**
+ * Гость: ставит чужого бойца в позу из буфера снимков.
+ *
+ * Своей симуляции у player1 здесь нет — update() ему не крутим, иначе он
+ * уезжал бы от авторитетного состояния и его приходилось бы возвращать
+ * рывком. Всё, что раньше делал update() и видно на экране (пыль из-под ног,
+ * искры от попадания), воспроизводим по снимку.
+ */
+function applyRemoteFrame(){
+  const frame=remoteBuffer.sample(performance.now());
+  if(!frame) return;   // ни одного снимка ещё не пришло — стоит в стартовой позе
+
+  const hpBefore=player1.hp;
+  applyFighter(player1,frame.f,1);
+  applyProjectile(player1,frame.p);
+
+  // Урон считает хост, поэтому искры гость рисует по факту падения HP.
+  if(player1.hp<hpBefore){
+    spawnParticles(player1.x,player1.centerY,player2.data.color,12,'hit');
+    screenShake=Math.min(screenShake+6,20);
+  }
+  if(player1.grounded&&Math.abs(player1.vx)>2&&Math.random()<0.4)
+    spawnParticles(player1.x,player1.groundY,'#5a5466',2,'dust');
+}
+
+/**
+ * Гость: не даёт своему бойцу влезть в чужого.
+ *
+ * pushBodies() здесь не годится — он двигает обоих, а чужой боец у гостя
+ * не симулируется: его позицию задаёт снимок, и сдвиг тут же затёрся бы.
+ */
+function separateFromRemote(){
+  const gap=Math.abs(player2.x-player1.x);
+  if(gap>=80) return;
+  const push=80-gap;
+  player2.x+=player2.x<player1.x?-push:push;
+  player2.x=Math.max(60,Math.min(CW-60,player2.x));
 }
 
 function buildSnapshot(){
@@ -1485,17 +1649,17 @@ function applySnapshot(snap){
     lastAppliedSnapshotSeq=snap.s;
   }
 
-  // Урон считает хост, поэтому искры гость рисует по факту падения HP.
-  const hpBefore1=player1.hp, hpBefore2=player2.hp;
+  // Чужой боец не применяется сразу: он ложится в буфер и попадёт на экран
+  // с небольшой задержкой, зато плавно (см. applyRemoteFrame).
+  remoteBuffer.push(performance.now(),snap.f1,snap.p1);
 
-  // Чужой боец — жёстко, свой — сглаженно: его мы предсказываем локально,
-  // и защёлкивание на каждом пакете читалось бы как рывки.
-  applyFighter(player1,snap.f1,1);
+  // Свой боец предсказан локально — подтягиваем его к авторитетному состоянию
+  // мягко, иначе защёлкивание на каждом пакете читалось бы как рывки.
+  const hpBefore2=player2.hp;
   applyFighter(player2,snap.f2,0.35);
-  applyProjectile(player1,snap.p1);
   applyProjectile(player2,snap.p2);
 
-  if(player1.hp<hpBefore1){ spawnParticles(player1.x,player1.centerY,player2.data.color,12,'hit'); screenShake=Math.min(screenShake+6,20); }
+  // Урон считает хост, поэтому искры гость рисует по факту падения HP.
   if(player2.hp<hpBefore2){ spawnParticles(player2.x,player2.centerY,player1.data.color,12,'hit'); screenShake=Math.min(screenShake+6,20); }
 
   const r=snap.r; if(!r) return;
@@ -1534,30 +1698,74 @@ function showWinner() {
   hideTouchControls();
   setFightHudVisible(false);
   setControlsInfoVisible(false);
-  const w=p1Wins>p2Wins?player1:player2;
-  document.getElementById('winnerName').textContent=w.data.name+(selection.p2Mode==='bot'&&!isBossFight&&w.pi!==1?' (БОТ)':'');
-  document.getElementById('winnerName').style.color=w.data.color;
-  document.getElementById('winnerLabel').textContent=isBossFight?(p1Wins>=1?'Гигант бездны повержен! Легенда!':'Тёмный Сергей поглотил твою душу...'):'побеждает!';
-  showScreen('winScreen');
   document.body.classList.remove('fight-active');
+
+  const versusActions = document.getElementById('winVersusActions');
+  const campaignActions = document.getElementById('winCampaignActions');
+  const nextBtn = document.getElementById('btnCampaignNext');
+  const retryBtn = document.getElementById('btnCampaignRetry');
+
+  if (isCampaign) {
+    if (versusActions) versusActions.classList.add('hidden');
+    if (campaignActions) campaignActions.classList.remove('hidden');
+
+    const p1Won = p1Wins > p2Wins;
+    if (p1Won) {
+      const { completed } = advanceCampaign();
+      document.getElementById('winnerName').textContent = player1.data.name;
+      document.getElementById('winnerName').style.color = player1.data.color;
+      if (completed) {
+        document.getElementById('winnerLabel').textContent = 'КАМПАНИЯ ПРОЙДЕНА! ВЫ ПОБЕДИЛИ ТЁМНОГО СЕРГЕЯ!';
+        if (nextBtn) nextBtn.style.display = 'none';
+        if (retryBtn) retryBtn.style.display = 'none';
+        void recordWin('boss');
+      } else {
+        document.getElementById('winnerLabel').textContent = 'побеждает! Этап пройден!';
+        if (nextBtn) {
+          nextBtn.style.display = '';
+          nextBtn.innerHTML = '<i class="fas fa-forward"></i> Следующий этап';
+        }
+        if (retryBtn) retryBtn.style.display = 'none';
+        void recordWin('bot');
+      }
+    } else {
+      document.getElementById('winnerName').textContent = player2.data.name + (isBossFight ? '' : ' (БОТ)');
+      document.getElementById('winnerName').style.color = player2.data.color;
+      document.getElementById('winnerLabel').textContent = isBossFight
+        ? 'Тёмный Сергей поглотил твою душу...'
+        : 'побеждает в этом раунде!';
+      if (nextBtn) nextBtn.style.display = 'none';
+      if (retryBtn) retryBtn.style.display = '';
+    }
+  } else {
+    if (versusActions) versusActions.classList.remove('hidden');
+    if (campaignActions) campaignActions.classList.add('hidden');
+
+    const w=p1Wins>p2Wins?player1:player2;
+    document.getElementById('winnerName').textContent=w.data.name+(selection.p2Mode==='bot'&&!isBossFight&&w.pi!==1?' (БОТ)':'');
+    document.getElementById('winnerName').style.color=w.data.color;
+    document.getElementById('winnerLabel').textContent=isBossFight?(p1Wins>=1?'Гигант бездны повержен! Легенда!':'Тёмный Сергей поглотил твою душу...'):'побеждает!';
+
+    if (isOnline) {
+      const iWon = onlineRole === 'host' ? p1Wins > p2Wins : p2Wins > p1Wins;
+      if (iWon) void recordWin('pvp');
+    } else if (p1Wins > p2Wins) {
+      if (isBossFight && !selection.bossIsPlayer) void recordWin('boss');
+      else if (!isBossFight && selection.p2Mode === 'bot') void recordWin('bot');
+    }
+  }
+
+  showScreen('winScreen');
 
   // Экран победы у гостя появляется из снимка, поэтому хост обязан
   // отправить финальное состояние: в 'win' игровой цикл снимки уже не шлёт.
   if (isOnline && onlineRole === 'host') sendSnapshotNow();
-
-  // Локальный хотсит не засчитываем: оба игрока сидят под одним аккаунтом,
-  // и победа не принадлежит кому-то конкретному. recordWin не бросает исключений.
-  if (isOnline) {
-    const iWon = onlineRole === 'host' ? p1Wins > p2Wins : p2Wins > p1Wins;
-    if (iWon) void recordWin('pvp');
-  } else if (p1Wins > p2Wins) {
-    if (isBossFight && !selection.bossIsPlayer) void recordWin('boss');
-    else if (!isBossFight && selection.p2Mode === 'bot') void recordWin('bot');
-  } }
+}
 
 let lastTime=0;
 function gameLoop(timestamp) {
   const dt=Math.min((timestamp-lastTime)/1000,0.05);lastTime=timestamp;const time=timestamp/1000;
+  ctx.setTransform(renderScale,0,0,renderScale,0,0);
   ctx.clearRect(0,0,CW,CH);ctx.save();
   if(screenShake>0)ctx.translate((Math.random()-0.5)*screenShake*2,(Math.random()-0.5)*screenShake*2);
   drawBackground(ctx,background,time,isBossFight);
@@ -1570,7 +1778,122 @@ function gameLoop(timestamp) {
   ctx.restore();requestAnimationFrame(gameLoop);
 }
 
-function showSelect(){hideTouchControls();setFightHudVisible(false);setControlsInfoVisible(false);hideScreen('menuScreen');showScreen('selectScreen');resetSelection();buildCharGrids();}
+function showSelect(){
+  isCampaign = false;
+  hideTouchControls();
+  setFightHudVisible(false);
+  setControlsInfoVisible(false);
+  hideScreen('menuScreen');
+  hideScreen('campaignScreen');
+  hideScreen('winScreen');
+  hideScreen('pauseScreen');
+  showScreen('selectScreen');
+  resetSelection();
+  setCampaignSelectMode(false);
+  buildCharGrids();
+}
+
+function startCampaignSelect(){
+  isCampaign = true;
+  hideTouchControls();
+  setFightHudVisible(false);
+  setControlsInfoVisible(false);
+  hideScreen('menuScreen');
+  hideScreen('campaignScreen');
+  hideScreen('winScreen');
+  hideScreen('pauseScreen');
+  showScreen('selectScreen');
+  resetSelection();
+  setCampaignSelectMode(true);
+  buildCharGrids();
+}
+
+function startCampaign(){
+  const state = getCampaignState();
+  if (state && !state.completed) {
+    isCampaign = true;
+    hideTouchControls();
+    setFightHudVisible(false);
+    setControlsInfoVisible(false);
+    hideScreen('menuScreen');
+    hideScreen('selectScreen');
+    hideScreen('winScreen');
+    hideScreen('pauseScreen');
+    showScreen('campaignScreen');
+    renderCampaignScreen();
+  } else {
+    startCampaignSelect();
+  }
+}
+
+function startCampaignFight(){
+  const state = getCampaignState();
+  if (!state || state.completed) return;
+  const hero = getCampaignHero(state);
+  const opp = getCurrentCampaignOpponent(state);
+  if (!hero || !opp) return;
+
+  isCampaign = true;
+  isOnline = false;
+  hideScreen('campaignScreen');
+  document.body.classList.add('fight-active');
+  setFightHudVisible(true);
+
+  const currentStage = state.stages[state.currentStageIndex];
+  if (currentStage.isBoss) {
+    isBossFight = true;
+    selection.bossIsPlayer = false;
+    selection.p2Mode = 'boss';
+    player1 = new Fighter(hero, CW * 0.25, 1, 0);
+    player2 = new Fighter(BOSS_DATA, CW * 0.72, -1, 1);
+    if (isTouchDevice) { showTouchControls('solo'); }
+    else { setControlsInfoVisible(true); updateControlsInfo(); }
+  } else {
+    isBossFight = false;
+    selection.p2Mode = 'bot';
+    player1 = new Fighter(hero, CW * 0.3, 1, 0);
+    player2 = new Fighter(opp, CW * 0.7, -1, 1);
+    if (isTouchDevice) { showTouchControls('solo'); }
+    else { setControlsInfoVisible(true); updateControlsInfo(); }
+  }
+
+  p1Wins = 0; p2Wins = 0; roundNum = 1;
+  startRound();
+}
+
+function campaignNextStage(){
+  hideScreen('winScreen');
+  document.body.classList.remove('fight-active');
+  const state = getCampaignState();
+  if (state && !state.completed) {
+    showScreen('campaignScreen');
+    renderCampaignScreen();
+  } else {
+    showScreen('menuScreen');
+  }
+}
+
+function campaignRetryStage(){
+  hideScreen('winScreen');
+  startCampaignFight();
+}
+
+function campaignToScreen(){
+  hideScreen('winScreen');
+  hideScreen('pauseScreen');
+  hideTouchControls();
+  setFightHudVisible(false);
+  setControlsInfoVisible(false);
+  document.body.classList.remove('fight-active');
+  gameState = 'menu';
+  showScreen('campaignScreen');
+  renderCampaignScreen();
+}
+
+function pauseToCampaign(){
+  hideScreen('pauseScreen');
+  campaignToScreen();
+}
 
 function updateControlsInfo(){
   const ci=document.getElementById('controlsInfo');
@@ -1590,8 +1913,17 @@ function updateControlsInfo(){
 }
 
 function startFight(){
+  if(isCampaignSelectMode){
+    if(!selection.selectedP1) return;
+    initCampaign(selection.selectedP1.id);
+    hideScreen('selectScreen');
+    showScreen('campaignScreen');
+    renderCampaignScreen();
+    return;
+  }
   if(!selection.selectedP1||( !selection.selectedP2 && selection.p2Mode!=='boss'))return;
   isOnline=false;
+  isCampaign=false;
   hideScreen('selectScreen');
   document.body.classList.add('fight-active');
   setFightHudVisible(true);
@@ -1625,12 +1957,13 @@ function startOnlineFight(hostCharId, guestCharId){
   const c1=CHARACTERS.find(c=>c.id===hostCharId), c2=CHARACTERS.find(c=>c.id===guestCharId);
   if(!c1||!c2) return;
 
-  isOnline=true; onlineRole=getRole(); isBossFight=false;
+  isOnline=true; onlineRole=getRole(); isBossFight=false; isCampaign=false;
   remoteHold=0;pendingRemoteAttacks=0;lastRemoteInputSeq=-1;
   pendingGuestAttacks=0;inputSeq=0;lastHoldSent=-1;lastInputSentAt=0;
   lastAppliedSnapshotSeq=-1;snapshotSeq=0;lastSnapshotSentAt=0;
+  remoteBuffer.reset();
 
-  hideScreen('menuScreen');hideScreen('selectScreen');hideScreen('winScreen');hideScreen('pauseScreen');
+  hideScreen('menuScreen');hideScreen('selectScreen');hideScreen('campaignScreen');hideScreen('winScreen');hideScreen('pauseScreen');
   document.body.classList.add('fight-active');
   setFightHudVisible(true);
 
@@ -1673,8 +2006,8 @@ function quitOnlineMatch(){
   void leaveRoom();
 }
 
-function backToSelect(){ quitOnlineMatch(); hideTouchControls();setFightHudVisible(false);setControlsInfoVisible(false);hideScreen('winScreen');hideScreen('pauseScreen');showScreen('selectScreen'); document.body.classList.remove('fight-active');gameState='menu';isBossFight=false;resetSelection();buildCharGrids();updateControlsInfo(); }
-function backToMenu(){ quitOnlineMatch(); hideTouchControls();setFightHudVisible(false);setControlsInfoVisible(false);hideScreen('winScreen');hideScreen('pauseScreen');showScreen('menuScreen'); document.body.classList.remove('fight-active');gameState='menu';isBossFight=false; }
+function backToSelect(){ quitOnlineMatch(); isCampaign=false; hideTouchControls();setFightHudVisible(false);setControlsInfoVisible(false);hideScreen('winScreen');hideScreen('pauseScreen');showScreen('selectScreen'); document.body.classList.remove('fight-active');gameState='menu';isBossFight=false;resetSelection();setCampaignSelectMode(false);buildCharGrids();updateControlsInfo(); }
+function backToMenu(){ quitOnlineMatch(); isCampaign=false; hideTouchControls();setFightHudVisible(false);setControlsInfoVisible(false);hideScreen('winScreen');hideScreen('pauseScreen');hideScreen('campaignScreen');hideScreen('selectScreen');showScreen('menuScreen'); document.body.classList.remove('fight-active');gameState='menu';isBossFight=false; }
 
 function toggleFullscreen() {
   if (!document.fullscreenElement) {
@@ -1703,10 +2036,11 @@ function togglePause() {
 function pauseFight() {
   if (gameState !== 'fight') return;
   gameState = 'pause';
+  document.getElementById('btnPauseSelect')?.classList.toggle('hidden', isCampaign);
+  document.getElementById('btnPauseCampaign')?.classList.toggle('hidden', !isCampaign);
   showScreen('pauseScreen');
   Object.keys(keys).forEach(k => keys[k] = false);
-  const touchEl = document.getElementById('touchControls');
-  if (touchEl) touchEl.querySelectorAll('.pressed').forEach(el => el.classList.remove('pressed'));
+  resetTouchInput();
 }
 
 function resumeFight() {
@@ -1737,6 +2071,7 @@ function pauseToMenu() {
 Object.assign(window, {
   showSelect, setP2Mode, setBossCtrl, startFight, backToSelect, backToMenu,
   togglePause, resumeFight, restartFight, pauseToSelect, pauseToMenu, toggleFullscreen,
+  startCampaign, startCampaignSelect, startCampaignFight, campaignNextStage, campaignRetryStage, campaignToScreen, pauseToCampaign,
   // Точки входа для сцены онлайна: DOM живёт там, симуляция — здесь.
   startOnlineFight, onRemoteInput, onRemoteState: applySnapshot, onOpponentLeft
 });

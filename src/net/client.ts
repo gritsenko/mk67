@@ -175,11 +175,16 @@ export function connect(): Promise<boolean> {
       await socket.connect(session, true);
 
       setStatus('online');
+      reconnectDelay = RECONNECT_BASE_MS;
+      failureStreak = 0;
       notifyListeners();
       return true;
     } catch (err) {
-      console.warn('[net] не удалось подключиться к Nakama:', err);
+      reportConnectFailure(err);
       setStatus('offline');
+      // Без этого страница оставалась бы офлайн до ручной перезагрузки:
+      // раньше повтор планировался только при обрыве уже живого сокета.
+      scheduleReconnect();
       return false;
     } finally {
       connectPromise = null;
@@ -189,17 +194,72 @@ export function connect(): Promise<boolean> {
   return connectPromise;
 }
 
+/**
+ * Первая попытка повтора быстрая: самая частая причина сбоя — не лежащий
+ * сервер, а единичный неудачный коннект (например, NAT loopback роутера,
+ * если играть из той же домашней сети). Такое лечится повтором через секунду.
+ *
+ * А вот когда бэкенда здесь просто нет (обычная локальная разработка без
+ * Nakama), повторы бесконечны, и каждый оставляет в консоли ошибку запроса —
+ * гасить её из JS нельзя, её печатает сам браузер. Поэтому пауза растёт до
+ * пяти минут: игре сеть не нужна, а по требованию (чат, таблица лидеров,
+ * онлайн-бой, возврат на вкладку) connect() всё равно вызывается сразу.
+ */
+const RECONNECT_BASE_MS = 1000;
+const RECONNECT_MAX_MS = 300000;
+
 let reconnectTimer: number | undefined;
-let reconnectDelay = 2000;
+let reconnectDelay = RECONNECT_BASE_MS;
+let failureStreak = 0;
+
+/**
+ * Подробности — только про первый сбой подряд. Дальше остаётся короткая
+ * строка: серия одинаковых стектрейсов раз в минуту не добавляет знания,
+ * а консоль во время боя забивает.
+ */
+function reportConnectFailure(err: unknown): void {
+  failureStreak += 1;
+  if (failureStreak === 1) {
+    const scheme = NET_CONFIG.useSSL ? 'https' : 'http';
+    console.warn(
+      `[net] не удалось подключиться к Nakama (${scheme}://${NET_CONFIG.host}:${NET_CONFIG.port}). ` +
+        'Игра работает офлайн; дальнейшие неудачные попытки пишутся одной строкой.',
+      err
+    );
+    return;
+  }
+  console.info(`[net] Nakama всё ещё недоступна (попытка ${failureStreak}).`);
+}
 
 function scheduleReconnect(): void {
   if (reconnectTimer !== undefined) return;
-  reconnectTimer = window.setTimeout(async () => {
+  if (status === 'online') return;
+
+  const delay = reconnectDelay;
+  reconnectDelay = Math.min(reconnectDelay * 2, RECONNECT_MAX_MS);
+
+  reconnectTimer = window.setTimeout(() => {
     reconnectTimer = undefined;
-    const ok = await connect();
-    // Растём до минуты, чтобы не долбить лежащий сервер.
-    reconnectDelay = ok ? 2000 : Math.min(reconnectDelay * 2, 60000);
-  }, reconnectDelay);
+    void connect();
+  }, delay);
+}
+
+/** Немедленная попытка: сеть вернулась или человек вернулся на вкладку. */
+function reconnectNow(): void {
+  if (status === 'online' || !isNetConfigured()) return;
+  if (reconnectTimer !== undefined) {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = undefined;
+  }
+  reconnectDelay = RECONNECT_BASE_MS;
+  void connect();
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('online', reconnectNow);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') reconnectNow();
+  });
 }
 
 export class NicknameError extends Error {}

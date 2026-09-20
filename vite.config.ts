@@ -1,4 +1,4 @@
-import { defineConfig, type Plugin } from 'vite';
+import { defineConfig, loadEnv, type Plugin } from 'vite';
 import { fileURLToPath } from 'node:url';
 import { readFileSync } from 'node:fs';
 
@@ -45,19 +45,53 @@ function versionTrackerPlugin(): Plugin {
   };
 }
 
-export default defineConfig({
-  base: './',
-  plugins: [versionTrackerPlugin()],
-  define: {
-    __APP_VERSION__: JSON.stringify(pkg.version || '1.0.0'),
-    __BUILD_TIME__: buildTime
-  },
-  build: {
-    rollupOptions: {
-      input: {
-        main: r('index.html'),
-        heroLab: r('hero-lab.html')
+export default defineConfig(({ mode }) => {
+  // Читаем .env* вручную: import.meta.env здесь ещё нет, это код сборщика.
+  const env = loadEnv(mode, process.cwd(), 'VITE_');
+
+  /**
+   * Бэкенд через dev-сервер.
+   *
+   * Если задан VITE_NAKAMA_DEV_PROXY, всё под /game_api уезжает на указанный
+   * адрес, а клиент ходит на свой же localhost:5173 (см. src/net/config.ts).
+   * Это снимает сразу три местные болячки разработки:
+   *
+   *  - hairpin NAT: изнутри домашней сети https://dev.gritsenko.biz отвечает
+   *    через раз, и прокси можно нацелить прямо на http://192.168.1.12;
+   *  - страница открыта по http, а бэкенд по https — никаких смешанных схем;
+   *  - запросы становятся same-origin, то есть без CORS и preflight.
+   *
+   * ws: true обязателен — игровой сокет идёт по тому же пути (/game_api/ws).
+   */
+  const proxyTarget = env.VITE_NAKAMA_DEV_PROXY?.trim();
+
+  return {
+    base: './',
+    plugins: [versionTrackerPlugin()],
+    define: {
+      __APP_VERSION__: JSON.stringify(pkg.version || '1.0.0'),
+      __BUILD_TIME__: buildTime
+    },
+    server: proxyTarget
+      ? {
+          proxy: {
+            '/game_api': {
+              target: proxyTarget,
+              changeOrigin: true,
+              // Прокси может смотреть на IP, а сертификат выписан на домен.
+              secure: false,
+              ws: true
+            }
+          }
+        }
+      : undefined,
+    build: {
+      rollupOptions: {
+        input: {
+          main: r('index.html'),
+          heroLab: r('hero-lab.html')
+        }
       }
     }
-  }
+  };
 });

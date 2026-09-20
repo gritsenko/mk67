@@ -67,33 +67,139 @@
         <div class="pause-actions">
           <button class="btn btn-primary" onclick="resumeFight()"><i class="fas fa-play"></i> Продолжить</button>
           <button class="btn btn-secondary" onclick="restartFight()"><i class="fas fa-rotate-left"></i> Заново</button>
-          <button class="btn btn-secondary" onclick="pauseToSelect()"><i class="fas fa-users"></i> Выбор бойцов</button>
+          <button class="btn btn-secondary" id="btnPauseSelect" onclick="pauseToSelect()"><i class="fas fa-users"></i> Выбор бойцов</button>
+          <button class="btn btn-secondary hidden" id="btnPauseCampaign" onclick="pauseToCampaign()"><i class="fas fa-stairs"></i> Экран кампании</button>
           <button class="btn btn-secondary" onclick="pauseToMenu()"><i class="fas fa-house"></i> Главное меню</button>
         </div>
       </div>
     </div>
-<div class="overlay" id="menuScreen"><div class="menu-content"><h1>ДРУЗЬЯ ФАЙТИНГ</h1><p class="subtitle">15 бойцов + ГИГА-БОСС. Брось ему вызов!</p><button class="btn btn-primary" onclick="showSelect()">Начать бой</button><br><a href="./hero-lab.html" class="btn btn-primary" style="margin-top:14px;background:linear-gradient(135deg,#2a2636,#16141e);font-size:14px;padding:10px 24px;">Hero Lab</a>
-<div class="menu-net-row">
-  <button class="btn btn-net" onclick="showLeaderboard()"><i class="fas fa-trophy"></i> Таблица лидеров</button>
-  <button class="btn btn-net" onclick="toggleChat()"><i class="fas fa-comments"></i> Чат</button>
-</div>
-<div class="net-bar" id="netBar">
-  <div class="net-nick-row" id="netNickRow">
-    <span class="net-dot net-dot--offline" id="netDot"></span>
-    <span class="net-nick" id="netNick">…</span>
-    <button class="net-link hidden" id="btnChangeNick">сменить ник</button>
-  </div>
-  <div class="nick-editor hidden" id="nickEditor">
-    <input id="nickInput" class="nick-input" maxlength="16" autocomplete="off" spellcheck="false" placeholder="Ник" />
-    <button class="net-link" id="nickSave">ок</button>
-    <button class="net-link" id="nickCancel">отмена</button>
-    <span class="nick-error" id="nickError"></span>
-  </div>
-</div>
-<div class="menu-version" id="menuVersion"></div>
-</div></div>
-<div class="overlay hidden" id="selectScreen"><div class="select-content"><h2>Выбор бойцов</h2><p class="select-hint">Каждый игрок выбирает своего персонажа</p><div class="players-select"><div class="player-col"><h3 class="p1-label"><i class="fas fa-gamepad"></i> Игрок 1</h3><div class="char-grid" id="p1Grid"></div></div><div class="vs-divider">VS</div><div class="player-col"><h3 class="p2-label" id="p2Label">Игрок 2</h3><div class="mode-toggle"><button class="mode-btn active-p2" id="btnP2Player" onclick="setP2Mode('player')">Игрок</button><button class="mode-btn" id="btnP2Bot" onclick="setP2Mode('bot')">Бот</button><button class="mode-btn boss-btn" id="btnP2Boss" onclick="setP2Mode('boss')">☠ БОСС</button><button class="mode-btn online-btn" id="btnP2Online" onclick="setP2Mode('online')">Онлайн</button></div><div class="char-grid" id="p2Grid"></div><div class="boss-card" id="bossCard" style="display:none;"><div style="width:64px;height:64px;border-radius:50%;background:#0a140a;border:3px solid #76ff03;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;box-shadow:0 0 16px rgba(118,255,3,0.35);"><img src="./avatars/darksergey.svg" alt="☠" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" /><span style="display:none;font-size:30px;color:#76ff03;">☠</span></div><div><div style="font-family:'Russo One';font-size:16px;color:#76ff03;">ТЁМНЫЙ СЕРГЕЙ</div><div style="font-size:11px;color:var(--muted);margin:2px 0;">ГИГА-БОСС БЕЗДНЫ • 420 HP • 1 раунд</div><div style="font-size:10px;color:#b39ddb;line-height:1.5;"><b style="color:#76ff03">T</b> хлыст <b style="color:#76ff03">Y</b> пасть <b style="color:#76ff03">G</b> шипы <b style="color:#76ff03">H</b> волна <b style="color:#76ff03">V</b> дождь <b style="color:#76ff03">B</b> клоны <b style="color:#ff1744">N</b> УЛЬТА</div><div class="boss-ctrl"><button class="boss-ctrl-btn active" id="bossCtrlBot" onclick="setBossCtrl(false)">Босс: БОТ</button><button class="boss-ctrl-btn" id="bossCtrlPlayer" onclick="setBossCtrl(true)">Босс: ИГРОК</button></div></div></div></div><div class="online-panel" id="onlinePanel" style="display:none"><p class="online-hint">Выбери бойца, создай бой и передай код другу — или введи его код.</p><div class="online-code-box hidden" id="onlineCodeBox"><span class="online-code" id="onlineCode"></span><button class="net-link" id="onlineCopy">скопировать</button></div><button class="btn btn-net online-needs-fighter" id="onlineCreate"><i class="fas fa-plus"></i> Создать бой</button><div class="online-join"><input id="onlineCodeInput" class="online-input" maxlength="5" placeholder="КОД" autocomplete="off" spellcheck="false" /><button class="btn btn-net online-needs-fighter" id="onlineJoin">Войти</button></div><div class="online-status" id="onlineStatus"></div><button class="net-link hidden" id="onlineCancel">отменить</button></div></div><div class="start-row"><button class="btn btn-primary" id="startFightBtn" onclick="startFight()" style="opacity:0.4;pointer-events:none;">Бой!</button></div></div></div>
-<div class="overlay hidden" id="winScreen"><div class="win-content"><div class="winner-name" id="winnerName"></div><p class="winner-label" id="winnerLabel">побеждает!</p><button class="btn btn-primary" onclick="backToSelect()">Реванш</button><button class="btn btn-primary" onclick="backToMenu()" style="margin-left:12px;background:linear-gradient(135deg,var(--accent2),#e6a000);">Меню</button></div></div>
+
+    <!-- Главное меню (Интро) -->
+    <div class="overlay" id="menuScreen">
+      <div class="menu-content">
+        <h1>ДРУЗЬЯ ФАЙТИНГ</h1>
+        <p class="subtitle">15 бойцов + ГИГА-БОСС. Брось ему вызов!</p>
+        <div class="menu-actions">
+          <button class="btn btn-primary" onclick="startCampaign()"><i class="fas fa-dungeon"></i> Кампания</button>
+          <button class="btn btn-secondary" onclick="showSelect()"><i class="fas fa-gamepad"></i> Обычный бой</button>
+        </div>
+        <div class="menu-extra-row">
+          <a href="./hero-lab.html" class="btn btn-hero-lab">Hero Lab</a>
+        </div>
+        <div class="menu-net-row">
+          <button class="btn btn-net" onclick="showLeaderboard()"><i class="fas fa-trophy"></i> Таблица лидеров</button>
+          <button class="btn btn-net" onclick="toggleChat()"><i class="fas fa-comments"></i> Чат</button>
+        </div>
+        <div class="net-bar" id="netBar">
+          <div class="net-nick-row" id="netNickRow">
+            <span class="net-dot net-dot--offline" id="netDot"></span>
+            <span class="net-nick" id="netNick">…</span>
+            <button class="net-link hidden" id="btnChangeNick">сменить ник</button>
+          </div>
+          <div class="nick-editor hidden" id="nickEditor">
+            <input id="nickInput" class="nick-input" maxlength="16" autocomplete="off" spellcheck="false" placeholder="Ник" />
+            <button class="net-link" id="nickSave">ок</button>
+            <button class="net-link" id="nickCancel">отмена</button>
+            <span class="nick-error" id="nickError"></span>
+          </div>
+        </div>
+        <div class="menu-version" id="menuVersion"></div>
+      </div>
+    </div>
+
+    <!-- Экран выбора бойцов -->
+    <div class="overlay hidden" id="selectScreen">
+      <div class="select-content">
+        <h2 id="selectTitle">Выбор бойцов</h2>
+        <p class="select-hint" id="selectHint">Каждый игрок выбирает своего персонажа</p>
+        <div class="players-select">
+          <div class="player-col" id="p1Col">
+            <h3 class="p1-label" id="p1Title"><i class="fas fa-gamepad"></i> Игрок 1</h3>
+            <div class="selected-char-badge" id="p1Badge"><span class="badge-placeholder">Выберите бойца</span></div>
+            <div class="char-grid" id="p1Grid"></div>
+          </div>
+          <div class="vs-divider" id="vsDivider">VS</div>
+          <div class="player-col" id="p2Col">
+            <h3 class="p2-label" id="p2Label">Игрок 2</h3>
+            <div class="mode-toggle">
+              <button class="mode-btn active-p2" id="btnP2Player" onclick="setP2Mode('player')">Игрок</button>
+              <button class="mode-btn" id="btnP2Bot" onclick="setP2Mode('bot')">Бот</button>
+              <button class="mode-btn boss-btn" id="btnP2Boss" onclick="setP2Mode('boss')">☠ БОСС</button>
+              <button class="mode-btn online-btn" id="btnP2Online" onclick="setP2Mode('online')">Онлайн</button>
+            </div>
+            <div class="selected-char-badge" id="p2Badge"><span class="badge-placeholder">Выберите бойца</span></div>
+            <div class="char-grid" id="p2Grid"></div>
+            <div class="boss-card" id="bossCard" style="display:none;">
+              <div style="width:64px;height:64px;border-radius:50%;background:#0a140a;border:3px solid #76ff03;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;box-shadow:0 0 16px rgba(118,255,3,0.35);">
+                <img src="./avatars/darksergey.svg" alt="☠" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" />
+                <span style="display:none;font-size:30px;color:#76ff03;">☠</span>
+              </div>
+              <div>
+                <div style="font-family:'Russo One';font-size:16px;color:#76ff03;">ТЁМНЫЙ СЕРГЕЙ</div>
+                <div style="font-size:11px;color:var(--muted);margin:2px 0;">ГИГА-БОСС БЕЗДНЫ • 420 HP • 1 раунд</div>
+                <div style="font-size:10px;color:#b39ddb;line-height:1.5;"><b style="color:#76ff03">T</b> хлыст <b style="color:#76ff03">Y</b> пасть <b style="color:#76ff03">G</b> шипы <b style="color:#76ff03">H</b> волна <b style="color:#76ff03">V</b> дождь <b style="color:#76ff03">B</b> клоны <b style="color:#ff1744">N</b> УЛЬТА</div>
+                <div class="boss-ctrl">
+                  <button class="boss-ctrl-btn active" id="bossCtrlBot" onclick="setBossCtrl(false)">Босс: БОТ</button>
+                  <button class="boss-ctrl-btn" id="bossCtrlPlayer" onclick="setBossCtrl(true)">Босс: ИГРОК</button>
+                </div>
+              </div>
+            </div>
+            <div class="online-panel" id="onlinePanel" style="display:none">
+              <p class="online-hint">Выбери бойца, создай бой и передай код другу — или введи его код.</p>
+              <div class="online-code-box hidden" id="onlineCodeBox"><span class="online-code" id="onlineCode"></span><button class="net-link" id="onlineCopy">скопировать</button></div>
+              <button class="btn btn-net online-needs-fighter" id="onlineCreate"><i class="fas fa-plus"></i> Создать бой</button>
+              <div class="online-join"><input id="onlineCodeInput" class="online-input" maxlength="5" placeholder="КОД" autocomplete="off" spellcheck="false" /><button class="btn btn-net online-needs-fighter" id="onlineJoin">Войти</button></div>
+              <div class="online-status" id="onlineStatus"></div>
+              <button class="net-link hidden" id="onlineCancel">отменить</button>
+            </div>
+          </div>
+        </div>
+        <div class="start-row">
+          <button class="btn btn-secondary" id="btnSelectBack" onclick="backToMenu()"><i class="fas fa-arrow-left"></i> Назад</button>
+          <button class="btn btn-primary" id="startFightBtn" onclick="startFight()" style="opacity:0.4;pointer-events:none;">Бой!</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Экран кампании -->
+    <div class="overlay hidden" id="campaignScreen">
+      <div class="campaign-content">
+        <div class="campaign-head">
+          <h2>КАМПАНИЯ</h2>
+          <p class="campaign-desc">Одолей ботов-соперников и сразись с Тёмным Сергеем!</p>
+        </div>
+        <div class="campaign-main-layout">
+          <div class="campaign-hero-card" id="campaignHeroCard"></div>
+          <div class="campaign-ladder-wrap">
+            <div class="campaign-ladder-title"><i class="fas fa-stairs"></i> Лестница испытаний</div>
+            <div class="campaign-ladder" id="campaignLadder"></div>
+          </div>
+        </div>
+        <div class="campaign-footer-actions">
+          <button class="btn btn-primary" id="btnCampaignFight" onclick="startCampaignFight()"><i class="fas fa-bolt"></i> В бой!</button>
+          <button class="btn btn-secondary" onclick="startCampaignSelect()"><i class="fas fa-user-pen"></i> Сменить героя</button>
+          <button class="btn btn-secondary" onclick="backToMenu()"><i class="fas fa-house"></i> В меню</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Экран победы / финала боя -->
+    <div class="overlay hidden" id="winScreen">
+      <div class="win-content">
+        <div class="winner-name" id="winnerName"></div>
+        <p class="winner-label" id="winnerLabel">побеждает!</p>
+        <div class="win-actions-versus" id="winVersusActions">
+          <button class="btn btn-primary" onclick="backToSelect()">Реванш</button>
+          <button class="btn btn-primary" onclick="backToMenu()" style="background:linear-gradient(135deg,var(--accent2),#e6a000);">Меню</button>
+        </div>
+        <div class="win-actions-campaign hidden" id="winCampaignActions">
+          <button class="btn btn-primary" id="btnCampaignNext" onclick="campaignNextStage()"><i class="fas fa-forward"></i> Следующий этап</button>
+          <button class="btn btn-secondary" id="btnCampaignRetry" onclick="campaignRetryStage()"><i class="fas fa-rotate-left"></i> Повторить бой</button>
+          <button class="btn btn-secondary" onclick="campaignToScreen()"><i class="fas fa-stairs"></i> Экран кампании</button>
+          <button class="btn btn-secondary" onclick="backToMenu()"><i class="fas fa-house"></i> Меню</button>
+        </div>
+      </div>
+    </div>
 
 <div class="overlay hidden" id="leaderboardScreen">
   <div class="lb-content">

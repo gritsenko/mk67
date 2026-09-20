@@ -10,6 +10,14 @@
   --safe-right: env(safe-area-inset-right, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-top: env(safe-area-inset-top, 0px);
+
+  /* Коэффициент пропорционального масштабирования интерфейса.
+     Значение выставляет src/ui/uiScale.ts, 1 = базовый макет 1280x720. */
+  --ui-scale: 1;
+  /* Единицы вьюпорта для содержимого внутри масштабированных блоков:
+     zoom увеличивает и px, и vw/vh, поэтому их нужно заранее поделить. */
+  --uvw: calc(1vw / var(--ui-scale));
+  --uvh: calc(1vh / var(--ui-scale));
 }
 
 * {
@@ -79,6 +87,34 @@ body.is-mobile.fight-active #gameCanvas {
 .overlay.hidden {
   opacity: 0;
   pointer-events: none;
+}
+
+/* Пропорциональное масштабирование интерфейса под размер экрана.
+   zoom (в отличие от transform) участвует в раскладке, поэтому центрирование,
+   прокрутка и попадание по кнопкам остаются корректными. */
+#menuScreen .menu-content,
+#selectScreen .select-content,
+#campaignScreen .campaign-content,
+#winScreen .win-content,
+#pauseScreen .pause-content,
+#leaderboardScreen .lb-content,
+.orientation-content,
+.chat-panel,
+.fight-hud-bar,
+.controls-info,
+#touchControls {
+  zoom: var(--ui-scale);
+}
+
+/* margin: auto вместо центрирования флексом — увеличенный блок, если он всё же
+   перерос экран, останется прокручиваемым целиком, а не обрежется сверху. */
+#menuScreen .menu-content,
+#selectScreen .select-content,
+#campaignScreen .campaign-content,
+#winScreen .win-content,
+#pauseScreen .pause-content,
+#leaderboardScreen .lb-content {
+  margin: auto;
 }
 
 /* Подсказка о повороте экрана в альбомную ориентацию */
@@ -208,7 +244,7 @@ body.is-mobile.fight-active #gameCanvas {
   border-radius: 12px;
   padding: 24px 30px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8), 0 0 30px rgba(255, 77, 42, 0.2);
-  max-width: 90vw;
+  max-width: calc(90 * var(--uvw));
   width: 320px;
   animation: fadeUp 0.3s ease;
 }
@@ -285,30 +321,54 @@ body.is-mobile.fight-active #gameCanvas {
 #menuScreen .subtitle {
   font-size: clamp(14px, 4vw, 18px);
   color: var(--muted);
-  margin-bottom: 30px;
+  margin-bottom: 24px;
+}
+
+.menu-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.menu-extra-row {
+  margin-bottom: 8px;
+}
+
+.btn-hero-lab {
+  background: linear-gradient(135deg, #2a2636, #16141e);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  font-size: 13px;
+  padding: 9px 24px;
+}
+
+.btn-hero-lab:active {
+  transform: scale(0.95);
 }
 
 /* Экран выбора бойцов */
 #selectScreen .select-content {
-  width: 96vw;
-  max-width: 920px;
+  width: calc(96 * var(--uvw));
+  max-width: 840px;
   animation: fadeUp 0.5s ease;
-  padding: 15px 0;
+  padding: 12px 0;
 }
 
 #selectScreen h2 {
   font-family: 'Russo One', sans-serif;
-  font-size: clamp(22px, 5vw, 34px);
+  font-size: clamp(20px, 4.5vw, 30px);
   text-align: center;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
   color: var(--accent2);
 }
 
 .select-hint {
   text-align: center;
   color: var(--muted);
-  margin-bottom: 14px;
-  font-size: clamp(12px, 3vw, 14px);
+  margin-bottom: 10px;
+  font-size: clamp(11px, 2.8vw, 13px);
 }
 
 .players-select {
@@ -320,31 +380,58 @@ body.is-mobile.fight-active #gameCanvas {
 
 .player-col {
   flex: 1;
-  max-width: 440px;
+  max-width: 420px;
 }
 
 .player-col h3 {
   font-family: 'Russo One', sans-serif;
-  font-size: clamp(15px, 4vw, 19px);
-  margin-bottom: 8px;
+  font-size: clamp(14px, 3.5vw, 18px);
+  margin-bottom: 4px;
   text-align: center;
 }
 
 .p1-label { color: var(--accent); }
 .p2-label { color: var(--accent2); }
 
+.selected-char-badge {
+  text-align: center;
+  min-height: 20px;
+  margin-bottom: 6px;
+  font-family: 'Russo One', sans-serif;
+  font-size: 13px;
+}
+
+.badge-placeholder {
+  color: var(--muted);
+  font-size: 12px;
+  font-family: 'Exo 2', sans-serif;
+  font-weight: normal;
+}
+
+.badge-char-name {
+  font-size: 14px;
+  margin-right: 6px;
+}
+
+.badge-char-style {
+  font-size: 11px;
+  color: var(--muted);
+  font-family: 'Exo 2', sans-serif;
+  font-weight: normal;
+}
+
 .mode-toggle {
   display: flex;
   justify-content: center;
   gap: 6px;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
   flex-wrap: wrap;
 }
 
 .mode-btn {
-  padding: 5px 12px;
+  padding: 4px 10px;
   font-family: 'Russo One', sans-serif;
-  font-size: clamp(11px, 3vw, 13px);
+  font-size: clamp(10px, 2.8vw, 12px);
   border: 2px solid var(--border);
   border-radius: 6px;
   background: transparent;
@@ -366,37 +453,54 @@ body.is-mobile.fight-active #gameCanvas {
   box-shadow: 0 0 12px rgba(118, 255, 3, 0.3);
 }
 
+/* Компактная сетка 5 колонок x 3 ряда: только аватарки */
 .char-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 9px;
+  max-width: 405px;
+  margin: 0 auto;
 }
 
 .char-card {
   background: var(--card);
   border: 2px solid var(--border);
-  border-radius: 8px;
-  padding: 8px 4px;
+  border-radius: 12px;
+  padding: 2px;
   text-align: center;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  margin: 0 auto;
+}
+
+.char-card:hover {
+  transform: scale(1.1);
+  border-color: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.25);
 }
 
 .char-card.selected-p1 {
   border-color: var(--accent);
-  box-shadow: 0 0 15px rgba(255, 77, 42, 0.3);
+  box-shadow: 0 0 14px rgba(255, 77, 42, 0.7);
+  transform: scale(1.12);
 }
 
 .char-card.selected-p2 {
   border-color: var(--accent2);
-  box-shadow: 0 0 15px rgba(255, 184, 0, 0.3);
+  box-shadow: 0 0 14px rgba(255, 184, 0, 0.7);
+  transform: scale(1.12);
 }
 
 .char-avatar {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  margin: 0 auto 4px;
+  width: 100%;
+  height: 100%;
+  border-radius: 10px;
+  margin: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -413,7 +517,7 @@ body.is-mobile.fight-active #gameCanvas {
   height: 100%;
   object-fit: cover;
   display: block;
-  border-radius: 50%;
+  border-radius: 10px;
 }
 
 .char-avatar-fallback {
@@ -425,28 +529,21 @@ body.is-mobile.fight-active #gameCanvas {
   font-weight: 800;
 }
 
-.char-name {
-  font-size: 11px;
-  font-weight: 700;
+.select-campaign .players-select {
+  justify-content: center;
 }
 
-.char-stat {
-  font-size: 8px;
-  color: var(--muted);
-  line-height: 1.4;
+.select-campaign .player-col {
+  max-width: 420px;
+  width: 100%;
 }
 
-.stat-bar {
-  height: 2px;
-  border-radius: 2px;
-  background: var(--border);
-  margin: 1px 0;
-  overflow: hidden;
-}
-
-.stat-fill {
-  height: 100%;
-  border-radius: 2px;
+.start-row {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  align-items: center;
+  margin-top: 12px;
 }
 
 .boss-card {
@@ -500,11 +597,6 @@ body.is-mobile.fight-active #gameCanvas {
   padding-top: 30px;
 }
 
-.start-row {
-  text-align: center;
-  margin-top: 16px;
-}
-
 /* Экран победы */
 #winScreen .win-content {
   text-align: center;
@@ -521,7 +613,260 @@ body.is-mobile.fight-active #gameCanvas {
 #winScreen .winner-label {
   font-size: clamp(16px, 5vw, 20px);
   color: var(--muted);
-  margin-bottom: 30px;
+  margin-bottom: 24px;
+}
+
+.win-actions-versus,
+.win-actions-campaign {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.win-actions-versus.hidden,
+.win-actions-campaign.hidden {
+  display: none !important;
+}
+
+/* =========================================================
+   ЭКРАН КАМПАНИИ
+   ========================================================= */
+#campaignScreen .campaign-content {
+  width: calc(95 * var(--uvw));
+  max-width: 620px;
+  max-height: calc(90 * var(--uvh));
+  display: flex;
+  flex-direction: column;
+  background: var(--card);
+  border: 2px solid var(--border);
+  border-radius: 14px;
+  padding: 18px 20px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8), 0 0 30px rgba(255, 77, 42, 0.15);
+  animation: fadeUp 0.4s ease;
+  overflow: hidden;
+}
+
+.campaign-head {
+  text-align: center;
+  margin-bottom: 12px;
+  flex-shrink: 0;
+}
+
+.campaign-head h2 {
+  font-family: 'Russo One', sans-serif;
+  font-size: clamp(22px, 5vw, 28px);
+  color: var(--accent2);
+  margin-bottom: 2px;
+  letter-spacing: 1px;
+}
+
+.campaign-desc {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 0;
+}
+
+.campaign-main-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Карточка выбранного героя игрока */
+.campaign-hero-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: rgba(255, 77, 42, 0.08);
+  border: 1px solid rgba(255, 77, 42, 0.35);
+  border-radius: 10px;
+  padding: 10px 14px;
+  flex-shrink: 0;
+}
+
+.campaign-hero-avatar-box {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  overflow: hidden;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.campaign-hero-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.campaign-hero-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.campaign-hero-name {
+  font-family: 'Russo One', sans-serif;
+  font-size: 18px;
+  line-height: 1.2;
+}
+
+.campaign-hero-style {
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Лестница соперников */
+.campaign-ladder-wrap {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.campaign-ladder-title {
+  font-family: 'Russo One', sans-serif;
+  font-size: 13px;
+  color: var(--fg);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.campaign-ladder {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+  padding-right: 4px;
+  flex: 1;
+}
+
+.campaign-stage-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(20, 18, 28, 0.7);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 12px;
+  transition: all 0.2s ease;
+}
+
+.stage-number-box {
+  font-family: 'Russo One', sans-serif;
+  font-size: 11px;
+  color: var(--muted);
+  width: 62px;
+  flex-shrink: 0;
+}
+
+.stage-number-box.stage-boss-badge {
+  color: #76ff03;
+  font-weight: 800;
+}
+
+.stage-avatar-box {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border);
+  overflow: hidden;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stage-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.stage-fighter-name {
+  font-family: 'Russo One', sans-serif;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stage-fighter-style {
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stage-status-col {
+  flex-shrink: 0;
+}
+
+.stage-status-badge {
+  font-family: 'Russo One', sans-serif;
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  letter-spacing: 0.5px;
+}
+
+.status-done {
+  background: rgba(105, 240, 174, 0.15);
+  color: #69f0ae;
+  border: 1px solid rgba(105, 240, 174, 0.35);
+}
+
+.status-active {
+  background: rgba(255, 77, 42, 0.2);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  box-shadow: 0 0 10px rgba(255, 77, 42, 0.4);
+}
+
+.status-locked {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--muted);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.campaign-stage-card.stage-current {
+  border-color: var(--accent);
+  background: rgba(255, 77, 42, 0.12);
+  box-shadow: 0 0 12px rgba(255, 77, 42, 0.25);
+}
+
+.campaign-stage-card.stage-completed {
+  opacity: 0.6;
+}
+
+.campaign-stage-card.stage-locked {
+  opacity: 0.45;
+}
+
+.campaign-footer-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 12px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
 }
 
 @keyframes fadeUp {
@@ -564,7 +909,7 @@ body.is-mobile.fight-active #gameCanvas {
   pointer-events: none;
   padding-left: max(16px, var(--safe-left));
   padding-right: max(16px, var(--safe-right));
-  padding-bottom: max(12px, var(--safe-bottom));
+  padding-bottom: max(32px, calc(var(--safe-bottom) + 24px));
   touch-action: none;
   -webkit-user-select: none;
   user-select: none;
@@ -580,6 +925,7 @@ body.is-mobile.fight-active #touchControls {
   display: flex;
   align-items: flex-end;
   pointer-events: none;
+  margin-bottom: 8px;
 }
 
 .touch-left {
@@ -742,11 +1088,14 @@ body.is-mobile.fight-active #touchControls {
     ". special ."
     "block . heavy"
     ". light .";
+  grid-template-columns: repeat(3, 56px);
+  grid-template-rows: repeat(3, 56px);
   gap: 6px;
-  width: 170px;
-  height: 160px;
+  width: auto;
+  height: auto;
   align-items: center;
   justify-items: center;
+  margin-bottom: 8px;
 }
 
 .p1-solo-actions .btn-special { grid-area: special; }
@@ -804,13 +1153,13 @@ body.is-mobile.fight-active #touchControls {
 .menu-version { margin-top: 14px; font-size: 11px; color: var(--muted); letter-spacing: 0.5px; opacity: 0.75; transition: opacity 0.2s, color 0.2s; user-select: none; }
 .menu-version:hover { opacity: 1; color: var(--fg); }
 
-#leaderboardScreen .lb-content { width: 92vw; max-width: 460px; text-align: center; padding: 20px; animation: fadeUp 0.4s ease; }
+#leaderboardScreen .lb-content { width: calc(92 * var(--uvw)); max-width: 460px; text-align: center; padding: 20px; animation: fadeUp 0.4s ease; }
 #leaderboardScreen h2 { font-family: 'Russo One', sans-serif; font-size: clamp(22px, 6vw, 32px); color: var(--accent2); margin-bottom: 4px; }
 .lb-hint { color: var(--muted); font-size: 12px; margin-bottom: 14px; }
 .lb-tabs { display: flex; gap: 8px; justify-content: center; margin-bottom: 12px; }
 .lb-tab { background: var(--card); border: 1px solid var(--border); color: var(--muted); border-radius: 6px; padding: 7px 14px; font-family: inherit; font-size: 12px; cursor: pointer; }
 .lb-tab.active { border-color: var(--accent); color: var(--fg); }
-.lb-list { max-height: 46vh; overflow-y: auto; margin-bottom: 16px; text-align: left; }
+.lb-list { max-height: calc(46 * var(--uvh)); overflow-y: auto; margin-bottom: 16px; text-align: left; }
 .lb-row { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-bottom: 1px solid var(--border); font-size: 14px; }
 .lb-row--own { background: rgba(255,77,42,0.12); border-radius: 6px; }
 .lb-rank { width: 28px; color: var(--accent2); font-family: 'Russo One', sans-serif; flex-shrink: 0; }
@@ -818,7 +1167,7 @@ body.is-mobile.fight-active #touchControls {
 .lb-score { color: var(--accent); font-family: 'Russo One', sans-serif; }
 .lb-empty { color: var(--muted); font-size: 13px; padding: 20px 0; text-align: center; }
 
-.chat-panel { position: fixed; top: 0; right: 0; width: 340px; max-width: 92vw; height: 100vh; background: rgba(12,11,18,0.97); border-left: 1px solid var(--border); display: flex; flex-direction: column; z-index: 150; transition: transform 0.25s ease; -webkit-user-select: text; user-select: text; }
+.chat-panel { position: fixed; top: 0; right: 0; width: 340px; max-width: calc(92 * var(--uvw)); height: calc(100 * var(--uvh)); background: rgba(12,11,18,0.97); border-left: 1px solid var(--border); display: flex; flex-direction: column; z-index: 150; transition: transform 0.25s ease; -webkit-user-select: text; user-select: text; }
 .chat-panel.hidden { transform: translateX(102%); pointer-events: none; }
 .chat-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
 .chat-title { font-family: 'Russo One', sans-serif; font-size: 15px; color: var(--accent2); }
@@ -876,43 +1225,24 @@ body.is-mobile.fight-active #touchControls {
   .mode-btn { padding: 2px 8px; font-size: 10px; }
   .vs-divider { font-size: 16px; padding-top: 15px; }
 
-  /* Сетка 5 колонок x 3 ряда = 15 бойцов */
+  /* Сетка 5 колонок x 3 ряда: только аватарки */
   .char-grid {
     grid-template-columns: repeat(5, 1fr);
-    gap: 3px;
+    gap: 4px;
+    max-width: 230px;
   }
   .char-card {
-    padding: 3px 2px;
-    border-radius: 6px;
-    border-width: 1px;
-  }
-  .char-avatar {
-    width: 32px;
-    height: 32px;
-    margin-bottom: 2px;
+    width: 38px;
+    height: 38px;
+    border-radius: 8px;
+    padding: 1px;
     border-width: 1.5px;
   }
+  .char-avatar {
+    width: 100%;
+    height: 100%;
+  }
   .char-avatar-fallback { font-size: 12px !important; }
-  .char-name {
-    font-size: 9px;
-    font-weight: 700;
-    line-height: 1.1;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .char-card .char-stat:first-of-type {
-    font-size: 8px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    margin-top: 1px;
-  }
-  /* Скрываем громоздкие шкалы статов в компактном альбомном режиме */
-  .char-card .char-stat:not(:first-of-type),
-  .char-card .stat-bar {
-    display: none;
-  }
 
   .boss-card {
     padding: 6px 8px;
@@ -927,10 +1257,53 @@ body.is-mobile.fight-active #touchControls {
   .start-row { margin-top: 6px; }
   #startFightBtn { padding: 8px 30px; font-size: 15px; }
 
+  /* Экран кампании в альбомном режиме */
+  #campaignScreen .campaign-content {
+    width: 98vw;
+    max-width: 720px;
+    max-height: 98vh;
+    padding: 8px 12px;
+  }
+  .campaign-head { margin-bottom: 4px; }
+  .campaign-head h2 { font-size: 18px; margin-bottom: 1px; }
+  .campaign-desc { display: none; }
+  .campaign-main-layout {
+    flex-direction: row;
+    gap: 10px;
+    align-items: stretch;
+  }
+  .campaign-hero-card {
+    width: 170px;
+    flex-direction: column;
+    text-align: center;
+    padding: 8px;
+    gap: 4px;
+  }
+  .campaign-hero-avatar-box { width: 42px; height: 42px; margin: 0 auto; }
+  .campaign-hero-name { font-size: 15px; }
+  .campaign-hero-style { font-size: 11px; }
+  .campaign-ladder {
+    max-height: 48vh;
+  }
+  .campaign-stage-card {
+    padding: 4px 8px;
+    gap: 6px;
+  }
+  .stage-avatar-box {
+    width: 28px;
+    height: 28px;
+  }
+  .stage-number-box { font-size: 10px; width: 52px; }
+  .stage-fighter-name { font-size: 11px; }
+  .stage-fighter-style { font-size: 9px; }
+  .stage-status-badge { font-size: 9px; padding: 2px 6px; }
+  .campaign-footer-actions { margin-top: 6px; gap: 6px; }
+  .campaign-footer-actions .btn { padding: 6px 16px; font-size: 12px; }
+
   /* Экран победы */
   #winScreen .win-content { padding: 10px; }
-  #winScreen .winner-name { font-size: 32px; margin-bottom: 4px; }
-  #winScreen .winner-label { font-size: 14px; margin-bottom: 14px; }
+  #winScreen .winner-name { font-size: 30px; margin-bottom: 3px; }
+  #winScreen .winner-label { font-size: 13px; margin-bottom: 12px; }
 
   /* Лидерборд */
   #leaderboardScreen .lb-content { padding: 10px; max-width: 90vw; }
@@ -940,15 +1313,28 @@ body.is-mobile.fight-active #touchControls {
   .lb-row { padding: 5px 8px; font-size: 12px; }
 
   /* Размеры сенсорного геймпада под альбомный экран смартфона */
-  .dpad { width: 125px; height: 125px; }
-  .dpad-btn { width: 40px; height: 40px; font-size: 15px; border-radius: 10px; }
-  .dpad-up { left: 42px; }
-  .dpad-down { left: 42px; }
-  .dpad-left { top: 42px; }
-  .dpad-right { top: 42px; }
-  .p1-solo-actions { width: 145px; height: 140px; gap: 4px; }
-  .action-btn { width: 50px; height: 50px; }
-  .action-btn i { font-size: 15px; margin-bottom: 1px; }
+  #touchControls {
+    padding-bottom: max(22px, calc(var(--safe-bottom) + 16px));
+  }
+  .touch-side {
+    margin-bottom: 6px;
+  }
+  .dpad { width: 118px; height: 118px; margin-bottom: 6px; }
+  .dpad-btn { width: 38px; height: 38px; font-size: 15px; border-radius: 10px; }
+  .dpad-up { left: 40px; }
+  .dpad-down { bottom: 0; left: 40px; }
+  .dpad-left { top: 40px; left: 0; }
+  .dpad-right { top: 40px; right: 0; }
+  .p1-solo-actions {
+    grid-template-columns: repeat(3, 44px);
+    grid-template-rows: repeat(3, 44px);
+    width: auto;
+    height: auto;
+    gap: 4px;
+    margin-bottom: 6px;
+  }
+  .action-btn { width: 44px; height: 44px; }
+  .action-btn i { font-size: 14px; margin-bottom: 1px; }
   .action-btn .btn-sub { font-size: 8px; }
 }
 

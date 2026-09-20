@@ -112,11 +112,29 @@ export function normalizeCode(raw: string): string {
   return out;
 }
 
+/**
+ * Nakama кодирует тело пакета через btoa, а тот умеет только Latin-1:
+ * любая кириллица в полезной нагрузке (например koText = 'РАУНД 1')
+ * роняла отправку с InvalidCharacterError — причём внутри промиса,
+ * мимо try/catch, так что снимки молча переставали доходить.
+ *
+ * Экранируем всё за пределами ASCII в \uXXXX: это по-прежнему валидный JSON,
+ * и JSON.parse на той стороне вернёт исходную строку.
+ */
+function encodePayload(payload: unknown): string {
+  return JSON.stringify(payload).replace(
+    /[^\x20-\x7E]/g,
+    ch => '\\u' + ch.charCodeAt(0).toString(16).padStart(4, '0')
+  );
+}
+
 function send(op: number, payload: unknown): void {
   const socket = getSocket();
   if (!socket || !matchId) return;
   try {
-    void socket.sendMatchState(matchId, op, JSON.stringify(payload));
+    // sendMatchState возвращает промис: без catch ошибка всплыла бы как unhandled rejection.
+    void Promise.resolve(socket.sendMatchState(matchId, op, encodePayload(payload)))
+      .catch(err => console.warn('[match] пакет не ушёл:', err));
   } catch (err) {
     console.warn('[match] не удалось отправить пакет:', err);
   }
