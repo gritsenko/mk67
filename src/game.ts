@@ -56,6 +56,8 @@ let onlineRole = 'host';
 let remoteHold = 0, pendingRemoteAttacks = 0, lastRemoteInputSeq = -1;
 // Гость: буфер своих атак и счётчик исходящих пакетов.
 let pendingGuestAttacks = 0, inputSeq = 0, lastHoldSent = -1, lastInputSentAt = 0;
+/** Гость: было ли «вверх» зажато на прошлом кадре — для распознавания повторного нажатия. */
+let guestJumpHeld=false;
 // Гость: номер последнего применённого снимка — пакеты могут прийти не по порядку.
 let lastAppliedSnapshotSeq = -1;
 let snapshotSeq = 0, lastSnapshotSentAt = 0;
@@ -367,11 +369,38 @@ window.addEventListener('resize', checkMobileDevice);
 
 function roundRect(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();}
 
+/** Импульс прыжка: высота одного прыжка ~120 px, двух подряд ~240 px — хватает перелететь бойца ростом ~126 px. */
+const JUMP_VY = 12;
+/** Доля роста, до которой сжимается хёртбокс в приседе. */
+const CROUCH_HEIGHT = 0.5;
+/** Длительность кувырка при двойном прыжке (кадры). */
+const FLIP_FRAMES = 22;
+
 class Fighter {
-  constructor(charData, x, facing, playerIndex) { Object.assign(this, { data: charData, x, y:0, vx:0, vy:0, facing, pi:playerIndex, hp:charData.hp, maxHp:charData.hp, displayHp:charData.hp, speed:charData.speed, power:charData.power, defense:charData.defense, grounded:true, blocking:false, attacking:false, attackType:'', attackTimer:0, attackDuration:0, attackHit:false, hurtTimer:0, combo:0, specialCooldown:0, animFrame:0, animTimer:0, bodyW:charData.bodyW, bodyH:charData.bodyH, projectile:null, slowTimer:0, bossCD:{light:0,heavy:0,spikes:0,wave:0,rain:0,clones:0,ulta:0}, bossProjectiles:[], bossSpikes:null, bossWave:null }); }
+  constructor(charData, x, facing, playerIndex) { Object.assign(this, { data: charData, x, y:0, vx:0, vy:0, facing, pi:playerIndex, hp:charData.hp, maxHp:charData.hp, displayHp:charData.hp, speed:charData.speed, power:charData.power, defense:charData.defense, grounded:true, blocking:false, attacking:false, attackType:'', attackTimer:0, attackDuration:0, attackHit:false, hurtTimer:0, combo:0, specialCooldown:0, animFrame:0, animTimer:0, bodyW:charData.bodyW, bodyH:charData.bodyH, projectile:null, slowTimer:0, crouching:false, airJumps:0, jumpHeld:false, flipTimer:0, bossCD:{light:0,heavy:0,spikes:0,wave:0,rain:0,clones:0,ulta:0}, bossProjectiles:[], bossSpikes:null, bossWave:null }); }
   get groundY() { return CH*0.82; } get feetY() { return this.groundY-this.y; } get centerY() { return this.feetY-this.bodyH/2; }
   get effSpeed() { return this.slowTimer>0 ? this.data.speed*0.45 : this.data.speed; }
   canAct() { return this.hurtTimer<=0 && !this.attacking; }
+  /** Высота хёртбокса: в приседе боец вдвое ниже — снаряды и высокие удары пролетают над головой. */
+  get hurtH() { return this.crouching ? this.bodyH*CROUCH_HEIGHT : this.bodyH; }
+  getHurtbox() { return {x:this.x-this.bodyW/2, y:this.feetY-this.hurtH, w:this.bodyW, h:this.hurtH}; }
+  /**
+   * Прыжок по удержанию «вверх». С земли — как раньше (удержание = повторный
+   * прыжок после приземления). В воздухе второй прыжок даёт только новое
+   * нажатие: иначе зажатая клавиша съедала бы его на следующем же кадре.
+   */
+  handleJump(pressed) {
+    const fresh = pressed && !this.jumpHeld; this.jumpHeld = pressed;
+    if(!pressed) return;
+    if(this.grounded){ this.jump(); return; }
+    if(fresh && this.airJumps>0) this.doubleJump();
+  }
+  jump() { this.vy=this.data.isBoss?-11:-JUMP_VY; this.grounded=false; this.y=Math.max(this.y,1); this.crouching=false; this.airJumps=this.data.isBoss?0:1; }
+  doubleJump() {
+    if(this.grounded||this.airJumps<=0) return;
+    this.airJumps--; this.vy=-JUMP_VY; this.flipTimer=FLIP_FRAMES;
+    spawnParticles(this.x,this.feetY,'#e0e0e0',8,'dust');
+  }
 
   attack(type) {
     if(this.data.isBoss){
@@ -432,7 +461,8 @@ class Fighter {
     this.hp=Math.max(0,this.hp-fd); attacker.combo++; }
 
   update() {
-    if(!this.grounded){this.vy+=0.6;this.y-=this.vy;if(this.y<=0){this.y=0;this.vy=0;this.grounded=true;}}
+    if(!this.grounded){this.vy+=0.6;this.y-=this.vy;if(this.y<=0){this.y=0;this.vy=0;this.grounded=true;this.airJumps=0;this.flipTimer=0;}}
+    if(this.flipTimer>0)this.flipTimer--;
     this.x+=this.vx; const margin=this.data.isBoss?115:60; this.x=Math.max(margin,Math.min(CW-margin,this.x));
     if(this.hurtTimer>0)this.hurtTimer--; if(this.specialCooldown>0)this.specialCooldown--; if(this.slowTimer>0)this.slowTimer--;
     if(this.data.isBoss){ for(const k in this.bossCD) if(this.bossCD[k]>0)this.bossCD[k]--; }
@@ -452,7 +482,11 @@ class Fighter {
     const hurt=this.hurtTimer>0&&this.hurtTimer%4<2;
     const C=this.data;
     const sc=this.data.isBoss?BOSS_SCALE:SCALE;
-    ctx.translate(bx, by); ctx.scale(f * sc, sc); 
+    ctx.translate(bx, by); ctx.scale(f * sc, sc);
+    // Кувырок двойного прыжка: полный оборот вокруг центра тела в сторону взгляда.
+    if(this.flipTimer>0&&!C.isBoss){ const cy=-this.bodyH*0.65/sc; const a=(1-this.flipTimer/FLIP_FRAMES)*Math.PI*2; ctx.translate(0,cy); ctx.rotate(a); ctx.translate(0,-cy); }
+    // Присед: модель сжимается к стопам, чуть расползаясь в ширину.
+    if(this.crouching&&!C.isBoss){ ctx.scale(1.15, 0.45); }
     if(hurt) ctx.globalAlpha=0.6;
     const idle=Math.sin(time*3)*3;
     const walk=Math.sin(this.animFrame*0.8)*(Math.abs(this.vx)>0.5?10:0);
@@ -1403,7 +1437,7 @@ function checkBossFX(){
   const b=player2,h=player1;
   for(let i=b.bossProjectiles.length-1;i>=0;i--){
     const p=b.bossProjectiles[i];
-    const hb={x:h.x-h.bodyW/2,y:h.feetY-h.bodyH,w:h.bodyW,h:h.bodyH};
+    const hb=h.getHurtbox();
     if(p.x+p.r>hb.x&&p.x-p.r<hb.x+hb.w&&p.y+p.r>hb.y&&p.y-p.r<hb.y+hb.h){
       b.attackType='special';
       h.takeDamage(p.dmg,b);
@@ -1527,7 +1561,8 @@ function handleInput() {
     player1.vx=0;player1.blocking=false;
     if(keys['KeyA'])player1.vx=-player1.effSpeed;
     if(keys['KeyD'])player1.vx=player1.effSpeed;
-    if(keys['KeyW']&&player1.grounded){player1.vy=-12;player1.grounded=false;player1.y=1;}
+    player1.handleJump(!!keys['KeyW']);
+    player1.crouching=!!keys['KeyS']&&player1.grounded;
     if(keys['KeyS']){player1.blocking=true;player1.vx=0;}
     if(keys['KeyF']){player1.attack('light');keys['KeyF']=false;}
     // G босса-игрока зарезервирована под "шипы", поэтому в этом режиме герой бьёт тяжёлым только на X
@@ -1540,7 +1575,7 @@ function handleInput() {
   if(isBossFight){ selection.bossIsPlayer?bossHumanInput():bossBotLogic(); }
   else if(isOnline){ applyRemoteInput(); }
   else if(selection.p2Mode==='bot'){handleBotLogic();}
-  else{if(player2.canAct()){player2.vx=0;player2.blocking=false;if(keys['ArrowLeft'])player2.vx=-player2.effSpeed;if(keys['ArrowRight'])player2.vx=player2.effSpeed;if(keys['ArrowUp']&&player2.grounded){player2.vy=-12;player2.grounded=false;player2.y=1;}if(keys['ArrowDown']){player2.blocking=true;player2.vx=0;}if(keys['KeyJ']){player2.attack('light');keys['KeyJ']=false;}if(keys['KeyK']){player2.attack('heavy');keys['KeyK']=false;}if(keys['KeyU']){player2.attack('special');keys['KeyU']=false;}}}
+  else{if(player2.canAct()){player2.vx=0;player2.blocking=false;if(keys['ArrowLeft'])player2.vx=-player2.effSpeed;if(keys['ArrowRight'])player2.vx=player2.effSpeed;player2.handleJump(!!keys['ArrowUp']);player2.crouching=!!keys['ArrowDown']&&player2.grounded;if(keys['ArrowDown']){player2.blocking=true;player2.vx=0;}if(keys['KeyJ']){player2.attack('light');keys['KeyJ']=false;}if(keys['KeyK']){player2.attack('heavy');keys['KeyK']=false;}if(keys['KeyU']){player2.attack('special');keys['KeyU']=false;}}}
 }
 
 /**
@@ -1554,7 +1589,9 @@ function applyRemoteInput(){
   p.vx=0;p.blocking=false;
   if(remoteHold&HOLD.LEFT)p.vx=-p.effSpeed;
   if(remoteHold&HOLD.RIGHT)p.vx=p.effSpeed;
-  if((remoteHold&HOLD.JUMP)&&p.grounded){p.vy=-12;p.grounded=false;p.y=1;}
+  p.handleJump(!!(remoteHold&HOLD.JUMP));
+  if(pendingRemoteAttacks&ATTACK.DOUBLE_JUMP){p.doubleJump();pendingRemoteAttacks&=~ATTACK.DOUBLE_JUMP;}
+  p.crouching=!!(remoteHold&HOLD.BLOCK)&&p.grounded;
   if(remoteHold&HOLD.BLOCK){p.blocking=true;p.vx=0;}
   if(pendingRemoteAttacks&ATTACK.LIGHT){p.attack('light');pendingRemoteAttacks&=~ATTACK.LIGHT;}
   else if(pendingRemoteAttacks&ATTACK.HEAVY){p.attack('heavy');pendingRemoteAttacks&=~ATTACK.HEAVY;}
@@ -1579,6 +1616,11 @@ function stepGuestInput(){
   if(keys['KeyS'])hold|=HOLD.BLOCK;
 
   let attacks=0;
+  // Двойной прыжок — событие, а не удержание: маска удержания могла бы не успеть
+  // «мигнуть» между пакетами, и хост пропустил бы повторное нажатие.
+  const jumpDown=!!keys['KeyW'];
+  if(jumpDown&&!guestJumpHeld&&!player2.grounded&&player2.airJumps>0)attacks|=ATTACK.DOUBLE_JUMP;
+  guestJumpHeld=jumpDown;
   if(keys['KeyF']){attacks|=ATTACK.LIGHT;keys['KeyF']=false;}
   if(keys['KeyG']||keys['KeyX']){attacks|=ATTACK.HEAVY;keys['KeyG']=false;keys['KeyX']=false;}
   if(keys['KeyR']){attacks|=ATTACK.SPECIAL;keys['KeyR']=false;}
@@ -1595,7 +1637,9 @@ function stepGuestInput(){
   p.vx=0;p.blocking=false;
   if(hold&HOLD.LEFT)p.vx=-p.effSpeed;
   if(hold&HOLD.RIGHT)p.vx=p.effSpeed;
-  if((hold&HOLD.JUMP)&&p.grounded){p.vy=-12;p.grounded=false;p.y=1;}
+  p.handleJump(!!(hold&HOLD.JUMP));
+  if(pendingGuestAttacks&ATTACK.DOUBLE_JUMP){p.doubleJump();pendingGuestAttacks&=~ATTACK.DOUBLE_JUMP;}
+  p.crouching=!!(hold&HOLD.BLOCK)&&p.grounded;
   if(hold&HOLD.BLOCK){p.blocking=true;p.vx=0;}
   if(pendingGuestAttacks&ATTACK.LIGHT){p.attack('light');pendingGuestAttacks&=~ATTACK.LIGHT;}
   else if(pendingGuestAttacks&ATTACK.HEAVY){p.attack('heavy');pendingGuestAttacks&=~ATTACK.HEAVY;}
@@ -1607,7 +1651,7 @@ function bossHumanInput(){
   b.vx=0;b.blocking=false;
   if(keys['ArrowLeft'])b.vx=-b.effSpeed;
   if(keys['ArrowRight'])b.vx=b.effSpeed;
-  if(keys['ArrowUp']&&b.grounded){b.vy=-11;b.grounded=false;b.y=1;}
+  b.handleJump(!!keys['ArrowUp']);
   if(keys['ArrowDown']){b.blocking=true;b.vx=0;}
   if(keys['KeyT'])b.attack('light');
   if(keys['KeyY'])b.attack('heavy');
@@ -1638,24 +1682,29 @@ function bossBotLogic(){
   }
 }
 
-function handleBotLogic() { if(!player2.canAct()) return; player2.vx=0; player2.blocking=false; const dist=player2.x-player1.x, absDist=Math.abs(dist), dirToP1=dist>0?-1:1; botActionTimer++;
+function handleBotLogic() { if(!player2.canAct()) return; player2.vx=0; player2.blocking=false; player2.crouching=false; const dist=player2.x-player1.x, absDist=Math.abs(dist), dirToP1=dist>0?-1:1; botActionTimer++;
   if(botActionTimer>12+Math.random()*8){botActionTimer=0;
     if(player2.data.id==='sofya'&&player2.hp<player2.maxHp*0.45&&player2.specialCooldown<=0){botDecision='attack_special';}
     else if(player1.attacking&&absDist<120){botDecision='block';}
+    else if(player1.projectile&&!player1.projectile.hit&&Math.sign(player1.projectile.vx)===Math.sign(dist)&&Math.abs(player1.projectile.x-player2.x)<260&&Math.random()<0.7){botDecision='crouch';}
     else if(absDist>150){botDecision=player2.data.projectile&&player2.specialCooldown<=0&&Math.random()<0.5?'attack_special':'approach';}
     else if(absDist<90){const r=Math.random();if(r<0.4)botDecision='attack_light';else if(r<0.65)botDecision='attack_heavy';else if(r<0.75&&player2.specialCooldown<=0)botDecision='attack_special';else if(r<0.85)botDecision='block';else botDecision='retreat';}
     else{const r=Math.random();if(r<0.6)botDecision='approach';else if(r<0.8&&player2.specialCooldown<=0&&player2.data.projectile)botDecision='attack_special';else botDecision='attack_light';}}
-  switch(botDecision){case'approach':player2.vx=dirToP1*player2.effSpeed;if(player2.grounded&&Math.random()<0.03){player2.vy=-12;player2.grounded=false;player2.y=1;}break;case'retreat':player2.vx=-dirToP1*player2.effSpeed;break;case'block':player2.blocking=true;break;case'attack_light':player2.attack('light');botDecision='idle';break;case'attack_heavy':player2.attack('heavy');botDecision='idle';break;case'attack_special':player2.attack('special');botDecision='idle';break;} }
+  // В воздухе над головой соперника бот иногда добавляет второй прыжок — перелетает и меняет сторону.
+  if(!player2.grounded&&player2.airJumps>0&&player2.vy>-2&&absDist<70&&Math.random()<0.25)player2.doubleJump();
+  switch(botDecision){case'approach':player2.vx=dirToP1*player2.effSpeed;if(player2.grounded&&Math.random()<0.03)player2.jump();break;case'crouch':player2.crouching=player2.grounded;player2.blocking=true;break;case'retreat':player2.vx=-dirToP1*player2.effSpeed;break;case'block':player2.blocking=true;break;case'attack_light':player2.attack('light');botDecision='idle';break;case'attack_heavy':player2.attack('heavy');botDecision='idle';break;case'attack_special':player2.attack('special');botDecision='idle';break;} }
 
-function checkHit(a,d){const b=a.getAttackBox();if(!b)return;const db={x:d.x-d.bodyW/2,y:d.feetY-d.bodyH,w:d.bodyW,h:d.bodyH};const rb={x:a.facing===1?b.x:b.x-b.w,y:b.y,w:b.w,h:b.h};if(rectsOverlap(rb,db)){a.attackHit=true;d.takeDamage(a.getDamage(),a);
+function checkHit(a,d){const b=a.getAttackBox();if(!b)return;const db=d.getHurtbox();const rb={x:a.facing===1?b.x:b.x-b.w,y:b.y,w:b.w,h:b.h};if(rectsOverlap(rb,db)){a.attackHit=true;d.takeDamage(a.getDamage(),a);
   if(a.data.isBoss){screenShake=Math.min(screenShake+10,20);if(a.attackType==='heavy')spawnParticles(d.x,d.centerY,'#9c27b0',10,'hit');}}}
-function checkProjectileHit(a,d){if(!a.projectile||a.projectile.hit)return;const p=a.projectile,db={x:d.x-d.bodyW/2,y:d.feetY-d.bodyH,w:d.bodyW,h:d.bodyH};if(p.x>db.x&&p.x<db.x+db.w&&p.y>db.y&&p.y<db.y+db.h){p.hit=true;a.attackType='special';d.takeDamage(a.getDamage()*0.8,a);
+function checkProjectileHit(a,d){if(!a.projectile||a.projectile.hit)return;const p=a.projectile,db=d.getHurtbox();if(p.x>db.x&&p.x<db.x+db.w&&p.y>db.y&&p.y<db.y+db.h){p.hit=true;a.attackType='special';d.takeDamage(a.getDamage()*0.8,a);
   const big=a.data.bigExplosion || a.data.id==='sergey';
   spawnParticles(p.x,p.y,a.data.color,big?25:15,'hit');
   if(a.data.acidSplash || a.data.id==='grisha')spawnParticles(p.x,p.y,'#a7ffeb',8,'hit');
   screenShake=Math.min(screenShake+(big?12:5),20);}}
 function rectsOverlap(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;}
-function pushBodies(){const dist=Math.abs(player1.x-player2.x),minDist=isBossFight?135:80;if(dist<minDist){const push=(minDist-dist)/2;if(player1.x<player2.x){player1.x-=push;player2.x+=push;}else{player1.x+=push;player2.x-=push;}}}
+/** Тела пересекаются по вертикали: стопы одного ниже макушки другого. Иначе один перелетает другого. */
+function bodiesOverlapVertically(a,b){ return a.feetY>b.feetY-b.hurtH && b.feetY>a.feetY-a.hurtH; }
+function pushBodies(){const dist=Math.abs(player1.x-player2.x),minDist=isBossFight?135:80;if(dist<minDist&&bodiesOverlapVertically(player1,player2)){const push=(minDist-dist)/2;if(player1.x<player2.x){player1.x-=push;player2.x+=push;}else{player1.x+=push;player2.x-=push;}}}
 
 function updateFight(dt) {
   // Гость бой не считает: у него своя ветка, а исход приходит снимками.
@@ -1724,7 +1773,7 @@ function applyRemoteFrame(){
  */
 function separateFromRemote(){
   const gap=Math.abs(player2.x-player1.x);
-  if(gap>=80) return;
+  if(gap>=80||!bodiesOverlapVertically(player1,player2)) return;
   const push=80-gap;
   player2.x+=player2.x<player1.x?-push:push;
   player2.x=Math.max(60,Math.min(CW-60,player2.x));
@@ -1800,7 +1849,7 @@ function endRound() {
   setTimeout(()=>{if(p1Wins>=2||p2Wins>=2)showWinner();else{roundNum++;startRound();}},2500); }
 
 function startRound() { gameState='fight';roundTimer=ROUND_DURATION_SECONDS;roundTimerAccum=0;resetParticles();screenShake=0;botActionTimer=0;botDecision='idle';bossBotTimer=0;bossBotDecision='idle';
-  [player1,player2].forEach((p,i)=>{p.x=isBossFight?(i===0?CW*0.25:CW*0.72):CW*(i===0?0.3:0.7);p.y=0;p.vx=0;p.vy=0;p.hp=p.maxHp;p.displayHp=p.maxHp;p.grounded=true;p.attacking=false;p.blocking=false;p.hurtTimer=0;p.combo=0;p.specialCooldown=0;p.projectile=null;p.slowTimer=0;
+  [player1,player2].forEach((p,i)=>{p.x=isBossFight?(i===0?CW*0.25:CW*0.72):CW*(i===0?0.3:0.7);p.y=0;p.vx=0;p.vy=0;p.hp=p.maxHp;p.displayHp=p.maxHp;p.grounded=true;p.attacking=false;p.blocking=false;p.hurtTimer=0;p.combo=0;p.specialCooldown=0;p.projectile=null;p.slowTimer=0;p.crouching=false;p.airJumps=0;p.jumpHeld=false;p.flipTimer=0;
     p.bossCD={light:0,heavy:0,spikes:0,wave:0,rain:0,clones:0,ulta:0};p.bossProjectiles=[];p.bossSpikes=null;p.bossWave=null;});
   koText=isBossFight?(selection.bossIsPlayer?'БОСС ПРОСНУЛСЯ':'БОСС ПРОБУЖДАЕТСЯ...'):`РАУНД ${roundNum}`;koTimer=60; }
 

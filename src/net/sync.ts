@@ -23,7 +23,9 @@ export const FIGHTER_FIELDS = [
   'grounded', 'blocking',
   'attacking', 'attackType', 'attackTimer', 'attackDuration', 'attackHit',
   'hurtTimer', 'combo', 'specialCooldown',
-  'animFrame', 'animTimer', 'slowTimer'
+  'animFrame', 'animTimer', 'slowTimer',
+  // Добавлены позже — в конец, чтобы индексы выше не сдвигались.
+  'crouching', 'airJumps', 'flipTimer'
 ] as const;
 
 /** Индексы полей, которые интерполируются, — их нельзя просто защёлкивать. */
@@ -43,7 +45,7 @@ const IDX_ATTACK_TIMER = 11;
  * (упало — сыпем искры). Плавно сползающее hp срабатывало бы каждый кадр.
  * Полоса здоровья всё равно рисуется по displayHp, а он интерполируется.
  */
-const BLEND_FIELDS = new Set([0, 1, 2, 3, 6, 11, 14, 16, 17, 18, 19]);
+const BLEND_FIELDS = new Set([0, 1, 2, 3, 6, 11, 14, 16, 17, 18, 19, 22]);
 
 export type FighterTuple = unknown[];
 
@@ -93,7 +95,12 @@ export const HOLD = {
 export const ATTACK = {
   LIGHT: 1 << 0,
   HEAVY: 1 << 1,
-  SPECIAL: 1 << 2
+  SPECIAL: 1 << 2,
+  /**
+   * Второй прыжок в воздухе. Тоже событие: по одной лишь маске удержания хост
+   * мог бы не заметить, что «вверх» отпустили и нажали снова между пакетами.
+   */
+  DOUBLE_JUMP: 1 << 3
 } as const;
 
 export interface InputPacket {
@@ -235,6 +242,11 @@ function blendFighters(
       // Удар начался или кончился между снимками: смешивать таймеры разных
       // ударов нельзя, поэтому просто крутим таймер старого снимка дальше.
       out[i] = Math.max(0, from - (t * spanMs) / MS_PER_FRAME);
+      continue;
+    }
+    // flipTimer только убывает; рост — это новый кувырок, а не движение назад.
+    if (i === 22 && to > from) {
+      out[i] = to;
       continue;
     }
     // animFrame/animTimer только растут; падение значения — сброс, не движение.
