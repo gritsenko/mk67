@@ -133,10 +133,41 @@ body.is-mobile.fight-active #gameCanvas {
   -webkit-backdrop-filter: blur(12px);
 }
 
+/* Подсказка нужна только в игровом режиме (экран выбора бойца и далее).
+   В главном меню и чате портретная ориентация допустима — с клавиатурой
+   так удобнее, см. src/systems/displayMode.ts. */
 @media (orientation: portrait) and (max-width: 900px) {
-  .orientation-prompt {
+  body.game-mode .orientation-prompt {
     display: flex;
   }
+}
+
+/* Игровой режим: ничего не выделяется и не зумится, кроме полей ввода и чата.
+   JS-часть (pinch, двойной тап, контекстное меню) — в displayMode.ts. */
+body.game-mode,
+body.game-mode .overlay,
+body.game-mode canvas,
+body.game-mode img {
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-user-drag: none;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+
+/* Экраны с прокруткой (выбор бойцов, кампания) должны листаться одним пальцем. */
+body.game-mode .overlay {
+  touch-action: pan-y;
+}
+
+body.game-mode input,
+body.game-mode textarea,
+body.game-mode .chat-panel {
+  -webkit-user-select: text;
+  user-select: text;
+  touch-action: auto;
 }
 
 .orientation-content {

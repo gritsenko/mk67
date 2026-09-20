@@ -55,6 +55,7 @@ c:/Projects/games/fighting/
         └── selectionScene.ts   # Логика экрана выбора бойцов (карточки, режимы P1/P2/Босс)
     └── systems/
         ├── background.ts       # Генерация и отрисовка фона арены
+        ├── displayMode.ts      # Игровой режим экрана: landscape + fullscreen с экрана выбора, блокировка жестов
         ├── particles.ts        # Общая система игровых частиц
         └── versionChecker.ts   # Детектор обновлений игры и всплывающее уведомление
 ```
