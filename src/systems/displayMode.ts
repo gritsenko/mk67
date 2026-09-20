@@ -10,10 +10,13 @@
  *   - после входа в fullscreen делается попытка залочить landscape через
  *     Screen Orientation API (работает в Android Chrome, в iOS Safari — нет,
  *     там остаётся только подсказка);
- *   - блокируются жесты, мешающие игре: pinch-zoom, выделение текста,
- *     контекстное меню по долгому нажатию, зум страницы с клавиатуры/колеса.
- *     Двойной тап гасится CSS (touch-action: none / pan-y на body.game-mode),
- *     preventDefault на touchend здесь не используется — он глушил бы click.
+ *   - блокируются жесты, мешающие игре: pinch-zoom, двойной тап, выделение
+ *     текста, контекстное меню по долгому нажатию, зум с клавиатуры/колеса.
+ *     iOS Safari игнорирует и user-scalable=no, и (местами) touch-action, поэтому
+ *     двойной тап гасится preventDefault на touchend, а чтобы не потерять
+ *     клик по кнопке — click диспатчится вручную;
+ *   - если зум всё-таки случился (visualViewport.scale > 1), переписывается
+ *     meta viewport — единственный способ сбросить масштаб на iOS из кода.
  *
  * Возврат в главное меню снимает всё это: ориентация разблокируется,
  * полноэкранный режим закрывается, жесты снова разрешены.
@@ -115,6 +118,79 @@ function onTouchMove(e: TouchEvent): void {
   if (gameModeActive && e.touches.length > 1) e.preventDefault();
 }
 
+/** Два тапа быстрее этого порога iOS считает double-tap zoom. */
+const DOUBLE_TAP_MS = 350;
+/** Смещение пальца, до которого касание ещё считается тапом, а не свайпом. */
+const TAP_SLOP_PX = 12;
+
+let lastTapAt = 0;
+let touchStartX = 0;
+let touchStartY = 0;
+
+function onTouchStart(e: TouchEvent): void {
+  if (!gameModeActive || e.touches.length !== 1) return;
+  const t = e.touches[0];
+  touchStartX = t.clientX;
+  touchStartY = t.clientY;
+}
+
+/**
+ * Быстрый повторный тап: гасим дефолт (это и есть double-tap zoom на iOS),
+ * а клик, который браузер из-за этого не сгенерирует, отправляем сами —
+ * иначе второе нажатие по карточке бойца или кнопке меню пропало бы.
+ * Тач-кнопки боя на pointer-событиях, им click не нужен, они гасятся сами.
+ */
+function onTouchEnd(e: TouchEvent): void {
+  if (!gameModeActive) return;
+  const now = Date.now();
+  const quickRepeat = now - lastTapAt < DOUBLE_TAP_MS;
+  lastTapAt = now;
+  if (!quickRepeat || !e.cancelable || isEditable(e.target)) return;
+  e.preventDefault();
+
+  const t = e.changedTouches[0];
+  if (!t) return;
+  const moved = Math.hypot(t.clientX - touchStartX, t.clientY - touchStartY);
+  if (moved > TAP_SLOP_PX) return;
+  const el = document.elementFromPoint(t.clientX, t.clientY) as HTMLElement | null;
+  if (el && !el.closest('.touch-controls')) el.click();
+}
+
+/* ---------- Сброс уже случившегося зума ---------- */
+
+let viewportToggle = false;
+let zoomResetScheduled = false;
+
+/**
+ * На iOS нет API «сбросить масштаб страницы», но переписывание meta viewport
+ * с maximum-scale=1 заставляет Safari пересчитать и вернуть scale к 1.
+ * Содержимое чередуется двумя эквивалентными строками, чтобы изменение
+ * атрибута замечалось каждый раз.
+ */
+function resetPinchZoom(): void {
+  const vv = window.visualViewport;
+  if (!vv || vv.scale <= 1.01) return;
+  const meta = document.querySelector('meta[name="viewport"]');
+  if (!meta) return;
+  const base = (meta.getAttribute('content') || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s) => s && !/^maximum-scale=/.test(s) && !/^minimum-scale=/.test(s))
+    .join(', ');
+  viewportToggle = !viewportToggle;
+  meta.setAttribute('content', `${base}, minimum-scale=1.0, maximum-scale=${viewportToggle ? '1.0' : '1'}`);
+}
+
+function onViewportResize(): void {
+  if (!gameModeActive || zoomResetScheduled) return;
+  zoomResetScheduled = true;
+  // Даём жесту закончиться, иначе Safari перетрёт наш сброс своим масштабом.
+  setTimeout(() => {
+    zoomResetScheduled = false;
+    resetPinchZoom();
+  }, 150);
+}
+
 function onGesture(e: Event): void {
   // Safari-специфичные события pinch/rotate.
   if (gameModeActive) e.preventDefault();
@@ -146,7 +222,10 @@ function installGestureGuards(): void {
   if (listenersInstalled) return;
   listenersInstalled = true;
   const passiveOff: AddEventListenerOptions = { passive: false, capture: true };
+  document.addEventListener('touchstart', onTouchStart, { passive: true, capture: true });
   document.addEventListener('touchmove', onTouchMove, passiveOff);
+  document.addEventListener('touchend', onTouchEnd, passiveOff);
+  window.visualViewport?.addEventListener('resize', onViewportResize);
   document.addEventListener('gesturestart', onGesture, passiveOff);
   document.addEventListener('gesturechange', onGesture, passiveOff);
   document.addEventListener('gestureend', onGesture, passiveOff);
@@ -168,6 +247,8 @@ export function enterGameMode(): void {
   gameModeActive = true;
   document.body.classList.add(GAME_MODE_CLASS);
   if (!isTouchLike()) return;
+  // Вдруг страницу уже приблизили в меню — в бой входим с масштабом 1.
+  resetPinchZoom();
   // На сенсорных: полный экран + попытка залочить landscape.
   requestFullscreen().then(() => lockLandscape());
 }

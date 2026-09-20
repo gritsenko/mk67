@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { BOSS_DATA, BOSS_MOVES, CHARACTERS } from './data/characters';
-import { BOSS_SCALE, GAME_HEIGHT as CH, GAME_WIDTH as CW, PLAYER_SCALE as SCALE, ROUND_DURATION_SECONDS } from './game/config';
+import { BOSS_SCALE, GAME_HEIGHT as CH, GAME_WIDTH as CW, PLAYER_SCALE as SCALE, ROUND_DURATION_SECONDS, TOUCH_STICK } from './game/config';
 import { selection, resetSelection, buildCharGrids, checkReady, setBossCtrl, setP2Mode, isCampaignSelectMode, setCampaignSelectMode } from './scenes/selectionScene';
 import { initCampaign, getCampaignState, getCurrentCampaignOpponent, getCampaignHero, advanceCampaign, resetCampaign, renderCampaignScreen } from './scenes/campaignScene';
 import { hideScreen, hideTouchControls as hideTouchControlsDom, setControlsInfoVisible, showScreen, showTouchControls, setFightHudVisible } from './scenes/screenManager';
@@ -145,7 +145,14 @@ function resetTouchInput() {
     delete touchTapTimers[key];
   }
   const touchEl = document.getElementById('touchControls');
-  if (touchEl) touchEl.querySelectorAll('.pressed').forEach(el => el.classList.remove('pressed'));
+  if (touchEl) {
+    touchEl.querySelectorAll('.pressed').forEach(el => el.classList.remove('pressed'));
+    touchEl.querySelectorAll('.stick-zone.active').forEach(el => {
+      el.classList.remove('active', 'dir-left', 'dir-right', 'dir-up', 'dir-down');
+      const knob = el.querySelector('.stick-knob');
+      if (knob) knob.style.transform = '';
+    });
+  }
 }
 
 /** Панель уезжает вместе со всем, что на ней было зажато. */
@@ -205,12 +212,100 @@ function setupTouchControls() {
     if (newKey) { activePointers[pointerId] = newKey; pressKey(newKey); }
   }
 
+  /* ---------- Плавающий стик ----------
+   * Палец касается зоны — центр стика встаёт под него. Смещение от центра
+   * переводится в те же клавиши, что и клавиатура (A/D шаг, W прыжок, S блок),
+   * так что физика, hotseat и сетевой код о стике не знают. Пороги — в
+   * TOUCH_STICK (src/game/config.ts). Клавиши идут через pressKey/releaseKey,
+   * поэтому стик и дублирующие кнопки (прыжок, блок) делят один счётчик.
+   */
+  /** pointerId -> состояние стика этого пальца. */
+  const activeSticks = {};
+
+  function uiScale() {
+    const v = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ui-scale'));
+    return v > 0 ? v : 1;
+  }
+
+  function startStick(zone, e) {
+    const rect = zone.getBoundingClientRect();
+    const scale = uiScale();
+    const base = zone.querySelector('.stick-base');
+    const st = {
+      zone, base,
+      knob: zone.querySelector('.stick-knob'),
+      cx: e.clientX, cy: e.clientY,
+      keys: { left: zone.dataset.left, right: zone.dataset.right, up: zone.dataset.up, down: zone.dataset.down },
+      held: { left: false, right: false, up: false, down: false },
+    };
+    // Базу ставим под палец; координаты внутри зоны делим на zoom панели.
+    if (base) {
+      base.style.left = `${(e.clientX - rect.left) / scale}px`;
+      base.style.top = `${(e.clientY - rect.top) / scale}px`;
+    }
+    zone.classList.add('active');
+    activeSticks[e.pointerId] = st;
+    updateStick(st, e);
+  }
+
+  function setDir(st, dir, on) {
+    if (st.held[dir] === on) return;
+    st.held[dir] = on;
+    st.zone.classList.toggle(`dir-${dir}`, on);
+    const key = st.keys[dir];
+    if (!key) return;
+    if (on) pressKey(key); else releaseKey(key);
+  }
+
+  function updateStick(st, e) {
+    const dx = e.clientX - st.cx;
+    const dy = e.clientY - st.cy;
+    const T = TOUCH_STICK;
+
+    // Горизонталь с гистерезисом: включаем за DEAD_ZONE, отпускаем внутри RELEASE_ZONE.
+    const goLeft = dx < -T.DEAD_ZONE || (st.held.left && dx < -T.RELEASE_ZONE);
+    const goRight = dx > T.DEAD_ZONE || (st.held.right && dx > T.RELEASE_ZONE);
+    setDir(st, 'left', goLeft && !goRight);
+    setDir(st, 'right', goRight && !goLeft);
+
+    // Вертикаль: вверх — прыжок (удержание = повторный прыжок после приземления,
+    // как на клавиатуре), вниз — блок. Оба одновременно невозможны.
+    const goUp = dy < -T.JUMP_THRESHOLD;
+    const goDown = dy > T.BLOCK_THRESHOLD;
+    setDir(st, 'up', goUp);
+    setDir(st, 'down', goDown && !goUp);
+
+    if (st.knob) {
+      const len = Math.hypot(dx, dy);
+      const k = len > T.KNOB_RADIUS ? T.KNOB_RADIUS / len : 1;
+      const scale = uiScale();
+      st.knob.style.transform = `translate(${(dx * k) / scale}px, ${(dy * k) / scale}px)`;
+    }
+  }
+
+  function endStick(pointerId) {
+    const st = activeSticks[pointerId];
+    if (!st) return;
+    delete activeSticks[pointerId];
+    for (const dir of Object.keys(st.held)) setDir(st, dir, false);
+    st.zone.classList.remove('active');
+    if (st.knob) st.knob.style.transform = '';
+  }
+
   function handlePointerDown(e) {
     const key = getKeyFromPoint(e.clientX, e.clientY);
-    if (!key) return;
-    // Гасим и прокрутку, и выделение, и эмуляцию мыши после тапа.
+    if (key) {
+      // Гасим и прокрутку, и выделение, и эмуляцию мыши после тапа.
+      e.preventDefault();
+      moveTo(e.pointerId, key);
+      return;
+    }
+    const zone = e.target && e.target.closest ? e.target.closest('.stick-zone') : null;
+    if (!zone) return;
     e.preventDefault();
-    moveTo(e.pointerId, key);
+    // Второй палец в той же зоне игнорируем: стик — один на игрока.
+    for (const id in activeSticks) if (activeSticks[id].zone === zone) return;
+    startStick(zone, e);
   }
 
   /**
@@ -220,6 +315,13 @@ function setupTouchControls() {
    * кнопке, а скольжение между кнопками — штатный способ играть.
    */
   function handlePointerMove(e) {
+    const st = activeSticks[e.pointerId];
+    if (st) {
+      if (e.pointerType === 'mouse' && e.buttons === 0) { endStick(e.pointerId); return; }
+      e.preventDefault();
+      updateStick(st, e);
+      return;
+    }
     if (!(e.pointerId in activePointers)) return;
     // Мышь: кнопку отпустили вне окна — считаем нажатие законченным.
     if (e.pointerType === 'mouse' && e.buttons === 0) { moveTo(e.pointerId, null); return; }
@@ -228,6 +330,7 @@ function setupTouchControls() {
   }
 
   function handlePointerUp(e) {
+    if (e.pointerId in activeSticks) { e.preventDefault(); endStick(e.pointerId); return; }
     if (!(e.pointerId in activePointers)) return;
     e.preventDefault();
     moveTo(e.pointerId, null);
@@ -235,6 +338,7 @@ function setupTouchControls() {
 
   function releaseAllPointers() {
     for (const id of Object.keys(activePointers)) delete activePointers[id];
+    for (const id of Object.keys(activeSticks)) delete activeSticks[id];
     resetTouchInput();
   }
 
@@ -243,6 +347,13 @@ function setupTouchControls() {
   window.addEventListener('pointerup', handlePointerUp, { passive: false });
   window.addEventListener('pointercancel', handlePointerUp, { passive: false });
   touchEl.addEventListener('contextmenu', e => e.preventDefault());
+  // iOS решает про double-tap zoom и long-press по touch-событиям, а не по
+  // pointer — preventDefault в pointerdown его не останавливает. Кнопкам боя
+  // click не нужен (они на pointer-событиях), поэтому touch гасим целиком:
+  // быстрые серии ударов перестают приближать экран.
+  const swallowTouch = e => { if (e.cancelable) e.preventDefault(); };
+  touchEl.addEventListener('touchstart', swallowTouch, { passive: false });
+  touchEl.addEventListener('touchend', swallowTouch, { passive: false });
 
   // Палец мог остаться «зажатым», если экран сменился прямо во время нажатия.
   window.addEventListener('blur', releaseAllPointers);

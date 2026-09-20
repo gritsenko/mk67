@@ -54,10 +54,13 @@
       </div>
     </div>
 
-    <!-- Верхние кнопки в бою: Пауза и Полноэкранный режим -->
-    <div class="fight-hud-bar hidden" id="fightHudBar">
-      <button class="hud-btn" id="btnFullscreen" title="На весь экран" aria-label="Полный экран" onclick="toggleFullscreen()"><i class="fas fa-expand"></i></button>
-      <button class="hud-btn" id="btnPause" title="Пауза" aria-label="Пауза" onclick="togglePause()"><i class="fas fa-pause"></i></button>
+    <!-- Верхняя правая панель: чат доступен с любого экрана, Пауза и Полноэкранный режим — только в бою -->
+    <div class="fight-hud-bar" id="topBar">
+      <button class="hud-btn hud-btn-chat" id="btnChat" title="Общий чат" aria-label="Общий чат" onclick="toggleChat()"><i class="fas fa-comments"></i></button>
+      <div class="hud-group hidden" id="fightHudBar">
+        <button class="hud-btn" id="btnFullscreen" title="На весь экран" aria-label="Полный экран" onclick="toggleFullscreen()"><i class="fas fa-expand"></i></button>
+        <button class="hud-btn" id="btnPause" title="Пауза" aria-label="Пауза" onclick="togglePause()"><i class="fas fa-pause"></i></button>
+      </div>
     </div>
 
     <!-- Окно паузы -->
@@ -227,19 +230,23 @@
 <div class="controls-info" id="controlsInfo"></div>
 
 <div id="touchControls" class="touch-controls touch-solo">
-  <!-- Левая сторона: D-Pad движения и прыжка -->
+  <!-- Левая сторона: плавающий стик (шаг, вверх — прыжок, вниз — блок) -->
   <div class="touch-side touch-left">
-    <div class="dpad" id="p1Dpad">
-      <div class="dpad-btn dpad-up" data-key="KeyW" aria-label="Прыжок"><i class="fas fa-chevron-up"></i></div>
-      <div class="dpad-btn dpad-left" data-key="KeyA" aria-label="Влево"><i class="fas fa-chevron-left"></i></div>
-      <div class="dpad-btn dpad-right" data-key="KeyD" aria-label="Вправо"><i class="fas fa-chevron-right"></i></div>
-      <div class="dpad-btn dpad-down" data-key="KeyS" aria-label="Вниз / Блок"><i class="fas fa-chevron-down"></i></div>
+    <div class="stick-zone" id="p1Stick" data-left="KeyA" data-right="KeyD" data-up="KeyW" data-down="KeyS" aria-label="Стик: движение, вверх — прыжок, вниз — блок">
+      <div class="stick-base">
+        <span class="stick-arrow stick-arrow-up"><i class="fas fa-chevron-up"></i></span>
+        <span class="stick-arrow stick-arrow-left"><i class="fas fa-chevron-left"></i></span>
+        <span class="stick-arrow stick-arrow-right"><i class="fas fa-chevron-right"></i></span>
+        <span class="stick-arrow stick-arrow-down"><i class="fas fa-chevron-down"></i></span>
+        <div class="stick-knob"><i class="fas fa-arrows-up-down-left-right"></i></div>
+      </div>
     </div>
     <!-- Кнопки P1 в режиме hotseat (2 игрока на 1 экране) -->
     <div class="action-cluster p1-versus-actions" id="p1VersusActions">
       <div class="action-btn btn-special" data-key="KeyR" aria-label="Спецприём"><i class="fas fa-bolt"></i><span class="btn-sub">СП</span></div>
       <div class="action-btn btn-heavy" data-key="KeyG" aria-label="Тяжёлый удар"><i class="fas fa-burst"></i><span class="btn-sub">ТЖ</span></div>
       <div class="action-btn btn-light" data-key="KeyF" aria-label="Удар"><i class="fas fa-hand-fist"></i><span class="btn-sub">УД</span></div>
+      <div class="action-btn btn-jump" data-key="KeyW" aria-label="Прыжок"><i class="fas fa-angles-up"></i><span class="btn-sub">ПР</span></div>
     </div>
   </div>
 
@@ -251,6 +258,7 @@
       <div class="action-btn btn-special" data-key="KeyR" aria-label="Спецприём"><i class="fas fa-bolt"></i><span class="btn-sub">СПЕЦ</span></div>
       <div class="action-btn btn-heavy" data-key="KeyG" aria-label="Тяжёлый удар"><i class="fas fa-burst"></i><span class="btn-sub">СИЛА</span></div>
       <div class="action-btn btn-light" data-key="KeyF" aria-label="Лёгкий удар"><i class="fas fa-hand-fist"></i><span class="btn-sub">УДАР</span></div>
+      <div class="action-btn btn-jump" data-key="KeyW" aria-label="Прыжок"><i class="fas fa-angles-up"></i><span class="btn-sub">ПРЫЖОК</span></div>
     </div>
 
     <!-- Управление Игрока 2 (только когда P2 = Игрок на одном устройстве) -->
@@ -259,12 +267,16 @@
         <div class="action-btn btn-special" data-key="KeyU" aria-label="Спецприём"><i class="fas fa-bolt"></i><span class="btn-sub">СП</span></div>
         <div class="action-btn btn-heavy" data-key="KeyK" aria-label="Тяжёлый удар"><i class="fas fa-burst"></i><span class="btn-sub">ТЖ</span></div>
         <div class="action-btn btn-light" data-key="KeyJ" aria-label="Удар"><i class="fas fa-hand-fist"></i><span class="btn-sub">УД</span></div>
+        <div class="action-btn btn-jump" data-key="ArrowUp" aria-label="Прыжок"><i class="fas fa-angles-up"></i><span class="btn-sub">ПР</span></div>
       </div>
-      <div class="dpad" id="p2Dpad">
-        <div class="dpad-btn dpad-up" data-key="ArrowUp" aria-label="Прыжок"><i class="fas fa-chevron-up"></i></div>
-        <div class="dpad-btn dpad-left" data-key="ArrowLeft" aria-label="Влево"><i class="fas fa-chevron-left"></i></div>
-        <div class="dpad-btn dpad-right" data-key="ArrowRight" aria-label="Вправо"><i class="fas fa-chevron-right"></i></div>
-        <div class="dpad-btn dpad-down" data-key="ArrowDown" aria-label="Вниз / Блок"><i class="fas fa-chevron-down"></i></div>
+      <div class="stick-zone" id="p2Stick" data-left="ArrowLeft" data-right="ArrowRight" data-up="ArrowUp" data-down="ArrowDown" aria-label="Стик: движение, вверх — прыжок, вниз — блок">
+        <div class="stick-base">
+          <span class="stick-arrow stick-arrow-up"><i class="fas fa-chevron-up"></i></span>
+          <span class="stick-arrow stick-arrow-left"><i class="fas fa-chevron-left"></i></span>
+          <span class="stick-arrow stick-arrow-right"><i class="fas fa-chevron-right"></i></span>
+          <span class="stick-arrow stick-arrow-down"><i class="fas fa-chevron-down"></i></span>
+          <div class="stick-knob"><i class="fas fa-arrows-up-down-left-right"></i></div>
+        </div>
       </div>
     </div>
   </div>

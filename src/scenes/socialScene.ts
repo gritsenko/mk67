@@ -201,7 +201,7 @@ function appendMessage(msg: ChatMessage): void {
   log.appendChild(row);
 
   // Не дёргаем прокрутку, если человек читает старое выше.
-  const nearBottom = log.scrollHeight - log.scrollTop - log.clientHeight < 120;
+  const nearBottom = isLogNearBottom(log);
   if (nearBottom || msg.own) log.scrollTop = log.scrollHeight;
 }
 
@@ -243,21 +243,106 @@ async function ensureChat(): Promise<void> {
   onMessage(appendMessage);
 }
 
+/* ------------------------------------------- чат и экранная клавиатура */
+
+/**
+ * На iOS и Android Chrome экранная клавиатура сжимает только visualViewport,
+ * а layout-вьюпорт (и 100vh) не меняется, поэтому панель высотой 100vh уезжала
+ * низом под клавиатуру. Пока чат открыт, следим за visualViewport и отдаём
+ * панели реальную видимую высоту и смещение через CSS-переменные (см. .chat-panel
+ * в styles.css). Если экран стал ниже — лента остаётся прижатой к последнему
+ * сообщению, чтобы оно не пряталось за полем ввода.
+ */
+const KEYBOARD_THRESHOLD_PX = 120;
+
+function isLogNearBottom(log: HTMLElement): boolean {
+  return log.scrollHeight - log.scrollTop - log.clientHeight < 120;
+}
+
+function syncChatViewport(): void {
+  const panel = byId('chatPanel');
+  const vv = window.visualViewport;
+  if (!panel || !vv || panel.classList.contains('hidden')) return;
+
+  const log = byId('chatLog');
+  const keepBottom = log ? isLogNearBottom(log) : false;
+
+  panel.style.setProperty('--chat-h', `${Math.round(vv.height)}px`);
+  panel.style.setProperty('--chat-top', `${Math.round(vv.offsetTop)}px`);
+  panel.classList.toggle('chat-panel--kbd', window.innerHeight - vv.height > KEYBOARD_THRESHOLD_PX);
+
+  if (log && keepBottom) log.scrollTop = log.scrollHeight;
+}
+
+function resetChatViewport(): void {
+  const panel = byId('chatPanel');
+  if (!panel) return;
+  panel.style.removeProperty('--chat-h');
+  panel.style.removeProperty('--chat-top');
+  panel.classList.remove('chat-panel--kbd');
+}
+
+let viewportTracked = false;
+
+function trackChatViewport(on: boolean): void {
+  const vv = window.visualViewport;
+  if (!vv || viewportTracked === on) return;
+  viewportTracked = on;
+  if (on) {
+    vv.addEventListener('resize', syncChatViewport);
+    vv.addEventListener('scroll', syncChatViewport);
+    syncChatViewport();
+  } else {
+    vv.removeEventListener('resize', syncChatViewport);
+    vv.removeEventListener('scroll', syncChatViewport);
+    resetChatViewport();
+  }
+}
+
+/**
+ * Safari при фокусе на поле иногда прокручивает страницу целиком (window.scrollY > 0),
+ * и fixed-панель уезжает вверх. Возвращаем страницу на место — размещением под
+ * клавиатурой занимается syncChatViewport через visualViewport.offsetTop.
+ */
+function onChatInputFocus(): void {
+  window.scrollTo(0, 0);
+  // Клавиатура выезжает с анимацией: первое событие resize приходит не сразу.
+  setTimeout(syncChatViewport, 300);
+}
+
+function isTouchDevice(): boolean {
+  return document.body.classList.contains('is-mobile');
+}
+
 export function toggleChat(): void {
   const panel = byId('chatPanel');
   if (!panel) return;
 
   const opening = panel.classList.contains('hidden');
-  panel.classList.toggle('hidden', !opening);
-
-  if (opening) {
-    void ensureChat();
-    (byId('chatInput') as HTMLInputElement | null)?.focus();
+  if (!opening) {
+    closeChat();
+    return;
   }
+
+  panel.classList.remove('hidden');
+  document.body.classList.add('chat-open');
+  trackChatViewport(true);
+  void ensureChat();
+
+  // На сенсорных автофокус сразу поднимает клавиатуру и закрывает половину
+  // ленты — пусть человек сначала прочитает, а поле нажмёт сам.
+  if (!isTouchDevice()) (byId('chatInput') as HTMLInputElement | null)?.focus();
 }
 
 export function closeChat(): void {
-  byId('chatPanel')?.classList.add('hidden');
+  const panel = byId('chatPanel');
+  if (!panel || panel.classList.contains('hidden')) return;
+
+  // blur до скрытия: клавиатура уедет вместе с панелью, а не останется висеть.
+  (byId('chatInput') as HTMLInputElement | null)?.blur();
+  panel.classList.add('hidden');
+  document.body.classList.remove('chat-open');
+  trackChatViewport(false);
 }
 
 async function submitChat(event: Event): Promise<void> {
@@ -305,6 +390,10 @@ export function initSocial(): void {
 
   byId('chatClose')?.addEventListener('click', closeChat);
   byId('chatForm')?.addEventListener('submit', event => void submitChat(event));
+  byId('chatInput')?.addEventListener('focus', onChatInputFocus);
+  byId('chatInput')?.addEventListener('keydown', event => {
+    if ((event as KeyboardEvent).key === 'Escape') closeChat();
+  });
   byId('lbClose')?.addEventListener('click', hideLeaderboard);
 
   Object.assign(window, { showLeaderboard, hideLeaderboard, toggleChat, closeChat });
