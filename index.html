@@ -2,12 +2,15 @@
 <html lang="ru">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="theme-color" content="#0a0a0f" />
     <title>Друзья Файтинг — 15 бойцов + ГИГА-БОСС</title>
     <meta name="description" content="Эпичный браузерный 2D файтинг! 15 уникальных бойцов со спецприёмами, комбо, битвы 1 на 1, против бота и рейд против ГИГА-БОССА Бездны — Тёмного Сергея." />
     <meta name="keywords" content="друзья файтинг, файтинг онлайн, игра в браузере, mortal kombat, fighting game, mk67, босс файт, 2d fighting" />
     <meta name="author" content="gritsenko" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
     <link rel="canonical" href="https://gritsenko.github.io/mk67/" />
 
     <!-- Open Graph / Facebook / VK / Telegram / WhatsApp -->
@@ -39,14 +42,127 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
   </head>
   <body>
-<div class="overlay" id="menuScreen"><div class="menu-content"><h1>ДРУЗЬЯ ФАЙТИНГ</h1><p class="subtitle">15 бойцов + ГИГА-БОСС. Брось ему вызов!</p><button class="btn btn-primary" onclick="showSelect()">Начать бой</button><br><a href="./hero-lab.html" class="btn btn-primary" style="margin-top:14px;background:linear-gradient(135deg,#2a2636,#16141e);font-size:14px;padding:10px 24px;">Hero Lab</a></div></div>
-<div class="overlay hidden" id="selectScreen"><div class="select-content"><h2>Выбор бойцов</h2><p class="select-hint">Каждый игрок выбирает своего персонажа</p><div class="players-select"><div class="player-col"><h3 class="p1-label"><i class="fas fa-gamepad"></i> Игрок 1</h3><div class="char-grid" id="p1Grid"></div></div><div class="vs-divider">VS</div><div class="player-col"><h3 class="p2-label">Игрок 2</h3><div class="mode-toggle"><button class="mode-btn active-p2" id="btnP2Player" onclick="setP2Mode('player')">Игрок</button><button class="mode-btn" id="btnP2Bot" onclick="setP2Mode('bot')">Бот</button><button class="mode-btn boss-btn" id="btnP2Boss" onclick="setP2Mode('boss')">☠ БОСС</button></div><div class="char-grid" id="p2Grid"></div><div class="boss-card" id="bossCard" style="display:none;"><div style="width:64px;height:64px;border-radius:50%;background:#0a140a;border:3px solid #76ff03;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;box-shadow:0 0 16px rgba(118,255,3,0.35);"><img src="./avatars/darksergey.svg" alt="☠" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" /><span style="display:none;font-size:30px;color:#76ff03;">☠</span></div><div><div style="font-family:'Russo One';font-size:16px;color:#76ff03;">ТЁМНЫЙ СЕРГЕЙ</div><div style="font-size:11px;color:var(--muted);margin:2px 0;">ГИГА-БОСС БЕЗДНЫ • 420 HP • 1 раунд</div><div style="font-size:10px;color:#b39ddb;line-height:1.5;"><b style="color:#76ff03">T</b> хлыст <b style="color:#76ff03">Y</b> пасть <b style="color:#76ff03">G</b> шипы <b style="color:#76ff03">H</b> волна <b style="color:#76ff03">V</b> дождь <b style="color:#76ff03">B</b> клоны <b style="color:#ff1744">N</b> УЛЬТА</div><div class="boss-ctrl"><button class="boss-ctrl-btn active" id="bossCtrlBot" onclick="setBossCtrl(false)">Босс: БОТ</button><button class="boss-ctrl-btn" id="bossCtrlPlayer" onclick="setBossCtrl(true)">Босс: ИГРОК</button></div></div></div></div></div><div class="start-row"><button class="btn btn-primary" id="startFightBtn" onclick="startFight()" style="opacity:0.4;pointer-events:none;">Бой!</button></div></div></div>
+    <!-- Подсказка о повороте экрана в альбомную ориентацию -->
+    <div class="orientation-prompt" id="orientationPrompt">
+      <div class="orientation-content">
+        <div class="phone-rotate-anim">
+          <i class="fas fa-mobile-screen-button phone-icon"></i>
+          <i class="fas fa-rotate-right rotate-arrow"></i>
+        </div>
+        <div class="orientation-title">ПОВЕРНИТЕ ЭКРАН</div>
+        <p class="orientation-desc">Для комфортной игры переверните телефон горизонтально (в альбомную ориентацию)</p>
+      </div>
+    </div>
+
+    <!-- Верхние кнопки в бою: Пауза и Полноэкранный режим -->
+    <div class="fight-hud-bar hidden" id="fightHudBar">
+      <button class="hud-btn" id="btnFullscreen" title="На весь экран" aria-label="Полный экран" onclick="toggleFullscreen()"><i class="fas fa-expand"></i></button>
+      <button class="hud-btn" id="btnPause" title="Пауза" aria-label="Пауза" onclick="togglePause()"><i class="fas fa-pause"></i></button>
+    </div>
+
+    <!-- Окно паузы -->
+    <div class="overlay hidden" id="pauseScreen">
+      <div class="pause-content">
+        <h2>ПАУЗА</h2>
+        <div class="pause-actions">
+          <button class="btn btn-primary" onclick="resumeFight()"><i class="fas fa-play"></i> Продолжить</button>
+          <button class="btn btn-secondary" onclick="restartFight()"><i class="fas fa-rotate-left"></i> Заново</button>
+          <button class="btn btn-secondary" onclick="pauseToSelect()"><i class="fas fa-users"></i> Выбор бойцов</button>
+          <button class="btn btn-secondary" onclick="pauseToMenu()"><i class="fas fa-house"></i> Главное меню</button>
+        </div>
+      </div>
+    </div>
+<div class="overlay" id="menuScreen"><div class="menu-content"><h1>ДРУЗЬЯ ФАЙТИНГ</h1><p class="subtitle">15 бойцов + ГИГА-БОСС. Брось ему вызов!</p><button class="btn btn-primary" onclick="showSelect()">Начать бой</button><br><a href="./hero-lab.html" class="btn btn-primary" style="margin-top:14px;background:linear-gradient(135deg,#2a2636,#16141e);font-size:14px;padding:10px 24px;">Hero Lab</a>
+<div class="menu-net-row">
+  <button class="btn btn-net" onclick="showLeaderboard()"><i class="fas fa-trophy"></i> Таблица лидеров</button>
+  <button class="btn btn-net" onclick="toggleChat()"><i class="fas fa-comments"></i> Чат</button>
+</div>
+<div class="net-bar" id="netBar">
+  <div class="net-nick-row" id="netNickRow">
+    <span class="net-dot net-dot--offline" id="netDot"></span>
+    <span class="net-nick" id="netNick">…</span>
+    <button class="net-link hidden" id="btnChangeNick">сменить ник</button>
+  </div>
+  <div class="nick-editor hidden" id="nickEditor">
+    <input id="nickInput" class="nick-input" maxlength="16" autocomplete="off" spellcheck="false" placeholder="Ник" />
+    <button class="net-link" id="nickSave">ок</button>
+    <button class="net-link" id="nickCancel">отмена</button>
+    <span class="nick-error" id="nickError"></span>
+  </div>
+</div>
+<div class="menu-version" id="menuVersion"></div>
+</div></div>
+<div class="overlay hidden" id="selectScreen"><div class="select-content"><h2>Выбор бойцов</h2><p class="select-hint">Каждый игрок выбирает своего персонажа</p><div class="players-select"><div class="player-col"><h3 class="p1-label"><i class="fas fa-gamepad"></i> Игрок 1</h3><div class="char-grid" id="p1Grid"></div></div><div class="vs-divider">VS</div><div class="player-col"><h3 class="p2-label" id="p2Label">Игрок 2</h3><div class="mode-toggle"><button class="mode-btn active-p2" id="btnP2Player" onclick="setP2Mode('player')">Игрок</button><button class="mode-btn" id="btnP2Bot" onclick="setP2Mode('bot')">Бот</button><button class="mode-btn boss-btn" id="btnP2Boss" onclick="setP2Mode('boss')">☠ БОСС</button><button class="mode-btn online-btn" id="btnP2Online" onclick="setP2Mode('online')">Онлайн</button></div><div class="char-grid" id="p2Grid"></div><div class="boss-card" id="bossCard" style="display:none;"><div style="width:64px;height:64px;border-radius:50%;background:#0a140a;border:3px solid #76ff03;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;box-shadow:0 0 16px rgba(118,255,3,0.35);"><img src="./avatars/darksergey.svg" alt="☠" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" /><span style="display:none;font-size:30px;color:#76ff03;">☠</span></div><div><div style="font-family:'Russo One';font-size:16px;color:#76ff03;">ТЁМНЫЙ СЕРГЕЙ</div><div style="font-size:11px;color:var(--muted);margin:2px 0;">ГИГА-БОСС БЕЗДНЫ • 420 HP • 1 раунд</div><div style="font-size:10px;color:#b39ddb;line-height:1.5;"><b style="color:#76ff03">T</b> хлыст <b style="color:#76ff03">Y</b> пасть <b style="color:#76ff03">G</b> шипы <b style="color:#76ff03">H</b> волна <b style="color:#76ff03">V</b> дождь <b style="color:#76ff03">B</b> клоны <b style="color:#ff1744">N</b> УЛЬТА</div><div class="boss-ctrl"><button class="boss-ctrl-btn active" id="bossCtrlBot" onclick="setBossCtrl(false)">Босс: БОТ</button><button class="boss-ctrl-btn" id="bossCtrlPlayer" onclick="setBossCtrl(true)">Босс: ИГРОК</button></div></div></div></div><div class="online-panel" id="onlinePanel" style="display:none"><p class="online-hint">Выбери бойца, создай бой и передай код другу — или введи его код.</p><div class="online-code-box hidden" id="onlineCodeBox"><span class="online-code" id="onlineCode"></span><button class="net-link" id="onlineCopy">скопировать</button></div><button class="btn btn-net online-needs-fighter" id="onlineCreate"><i class="fas fa-plus"></i> Создать бой</button><div class="online-join"><input id="onlineCodeInput" class="online-input" maxlength="5" placeholder="КОД" autocomplete="off" spellcheck="false" /><button class="btn btn-net online-needs-fighter" id="onlineJoin">Войти</button></div><div class="online-status" id="onlineStatus"></div><button class="net-link hidden" id="onlineCancel">отменить</button></div></div><div class="start-row"><button class="btn btn-primary" id="startFightBtn" onclick="startFight()" style="opacity:0.4;pointer-events:none;">Бой!</button></div></div></div>
 <div class="overlay hidden" id="winScreen"><div class="win-content"><div class="winner-name" id="winnerName"></div><p class="winner-label" id="winnerLabel">побеждает!</p><button class="btn btn-primary" onclick="backToSelect()">Реванш</button><button class="btn btn-primary" onclick="backToMenu()" style="margin-left:12px;background:linear-gradient(135deg,var(--accent2),#e6a000);">Меню</button></div></div>
+
+<div class="overlay hidden" id="leaderboardScreen">
+  <div class="lb-content">
+    <h2>Таблица лидеров</h2>
+    <p class="lb-hint">Побед засчитывается по одной за выигранный бой</p>
+    <div class="lb-tabs" id="lbTabs"></div>
+    <div class="lb-list" id="lbList"></div>
+    <button class="btn btn-primary" id="lbClose">Назад</button>
+  </div>
+</div>
+
+<div class="chat-panel hidden" id="chatPanel">
+  <div class="chat-head">
+    <span class="chat-title"><i class="fas fa-comments"></i> Общий чат</span>
+    <button class="chat-close" id="chatClose" aria-label="Закрыть">&times;</button>
+  </div>
+  <div class="chat-log" id="chatLog"></div>
+  <form class="chat-form" id="chatForm">
+    <input id="chatInput" class="chat-input" maxlength="300" autocomplete="off" placeholder="Сообщение…" />
+    <button class="chat-send" type="submit" aria-label="Отправить"><i class="fas fa-paper-plane"></i></button>
+  </form>
+</div>
 
 <canvas id="gameCanvas"></canvas>
 <div class="controls-info" id="controlsInfo"></div>
 
-<div id="touchControls"><div class="touch-side touch-left"><div class="dpad"><div class="dpad-btn dpad-up" data-key="KeyW"><i class="fas fa-chevron-up"></i></div><div class="dpad-btn dpad-left" data-key="KeyA"><i class="fas fa-chevron-left"></i></div><div class="dpad-btn dpad-right" data-key="KeyD"><i class="fas fa-chevron-right"></i></div><div class="dpad-btn dpad-down" data-key="KeyS"><i class="fas fa-chevron-down"></i></div></div><div class="actions-col"><div class="action-btns"><div class="action-btn btn-heavy" data-key="KeyG">ТЖ</div></div><div class="action-btns"><div class="action-btn btn-light" data-key="KeyF">УД</div></div><div class="action-btns"><div class="action-btn btn-special" data-key="KeyR">СП</div></div></div></div><div class="touch-side touch-right" id="p2TouchControls" style="display: none;"><div class="actions-col"><div class="action-btns"><div class="action-btn btn-heavy" data-key="KeyK">ТЖ</div></div><div class="action-btns"><div class="action-btn btn-light" data-key="KeyJ">УД</div></div><div class="action-btns"><div class="action-btn btn-special" data-key="KeyU">СП</div></div></div><div class="dpad"><div class="dpad-btn dpad-up" data-key="ArrowUp"><i class="fas fa-chevron-up"></i></div><div class="dpad-btn dpad-left" data-key="ArrowLeft"><i class="fas fa-chevron-left"></i></div><div class="dpad-btn dpad-right" data-key="ArrowRight"><i class="fas fa-chevron-right"></i></div><div class="dpad-btn dpad-down" data-key="ArrowDown"><i class="fas fa-chevron-down"></i></div></div></div></div>
+<div id="touchControls" class="touch-controls touch-solo">
+  <!-- Левая сторона: D-Pad движения и прыжка -->
+  <div class="touch-side touch-left">
+    <div class="dpad" id="p1Dpad">
+      <div class="dpad-btn dpad-up" data-key="KeyW" aria-label="Прыжок"><i class="fas fa-chevron-up"></i></div>
+      <div class="dpad-btn dpad-left" data-key="KeyA" aria-label="Влево"><i class="fas fa-chevron-left"></i></div>
+      <div class="dpad-btn dpad-right" data-key="KeyD" aria-label="Вправо"><i class="fas fa-chevron-right"></i></div>
+      <div class="dpad-btn dpad-down" data-key="KeyS" aria-label="Вниз / Блок"><i class="fas fa-chevron-down"></i></div>
+    </div>
+    <!-- Кнопки P1 в режиме hotseat (2 игрока на 1 экране) -->
+    <div class="action-cluster p1-versus-actions" id="p1VersusActions">
+      <div class="action-btn btn-special" data-key="KeyR" aria-label="Спецприём"><i class="fas fa-bolt"></i><span class="btn-sub">СП</span></div>
+      <div class="action-btn btn-heavy" data-key="KeyG" aria-label="Тяжёлый удар"><i class="fas fa-burst"></i><span class="btn-sub">ТЖ</span></div>
+      <div class="action-btn btn-light" data-key="KeyF" aria-label="Удар"><i class="fas fa-hand-fist"></i><span class="btn-sub">УД</span></div>
+    </div>
+  </div>
+
+  <!-- Правая сторона: кнопки атак в соло-режиме ИЛИ управление P2 в режиме hotseat -->
+  <div class="touch-side touch-right">
+    <!-- Кнопки P1 в соло-режиме (эргономичная раскладка под большой палец правой руки) -->
+    <div class="action-cluster p1-solo-actions" id="p1SoloActions">
+      <div class="action-btn btn-block" data-key="KeyS" aria-label="Блок"><i class="fas fa-shield-halved"></i><span class="btn-sub">БЛОК</span></div>
+      <div class="action-btn btn-special" data-key="KeyR" aria-label="Спецприём"><i class="fas fa-bolt"></i><span class="btn-sub">СПЕЦ</span></div>
+      <div class="action-btn btn-heavy" data-key="KeyG" aria-label="Тяжёлый удар"><i class="fas fa-burst"></i><span class="btn-sub">СИЛА</span></div>
+      <div class="action-btn btn-light" data-key="KeyF" aria-label="Лёгкий удар"><i class="fas fa-hand-fist"></i><span class="btn-sub">УДАР</span></div>
+    </div>
+
+    <!-- Управление Игрока 2 (только когда P2 = Игрок на одном устройстве) -->
+    <div class="touch-p2-versus" id="p2VersusControls">
+      <div class="action-cluster p2-actions">
+        <div class="action-btn btn-special" data-key="KeyU" aria-label="Спецприём"><i class="fas fa-bolt"></i><span class="btn-sub">СП</span></div>
+        <div class="action-btn btn-heavy" data-key="KeyK" aria-label="Тяжёлый удар"><i class="fas fa-burst"></i><span class="btn-sub">ТЖ</span></div>
+        <div class="action-btn btn-light" data-key="KeyJ" aria-label="Удар"><i class="fas fa-hand-fist"></i><span class="btn-sub">УД</span></div>
+      </div>
+      <div class="dpad" id="p2Dpad">
+        <div class="dpad-btn dpad-up" data-key="ArrowUp" aria-label="Прыжок"><i class="fas fa-chevron-up"></i></div>
+        <div class="dpad-btn dpad-left" data-key="ArrowLeft" aria-label="Влево"><i class="fas fa-chevron-left"></i></div>
+        <div class="dpad-btn dpad-right" data-key="ArrowRight" aria-label="Вправо"><i class="fas fa-chevron-right"></i></div>
+        <div class="dpad-btn dpad-down" data-key="ArrowDown" aria-label="Вниз / Блок"><i class="fas fa-chevron-down"></i></div>
+      </div>
+    </div>
+  </div>
+</div>
 
 
       <script type="module" src="/src/main.ts"></script>

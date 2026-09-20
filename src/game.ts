@@ -1,10 +1,13 @@
 // @ts-nocheck
-import { BOSS_DATA, BOSS_MOVES } from './data/characters';
+import { BOSS_DATA, BOSS_MOVES, CHARACTERS } from './data/characters';
 import { BOSS_SCALE, GAME_HEIGHT as CH, GAME_WIDTH as CW, PLAYER_SCALE as SCALE, ROUND_DURATION_SECONDS } from './game/config';
 import { selection, resetSelection, buildCharGrids, checkReady, setBossCtrl, setP2Mode } from './scenes/selectionScene';
-import { hideScreen, hideTouchControls, setControlsInfoVisible, showScreen } from './scenes/screenManager';
+import { hideScreen, hideTouchControls, setControlsInfoVisible, showScreen, showTouchControls, setFightHudVisible } from './scenes/screenManager';
 import { createBackground, drawBackground } from './systems/background';
 import { drawParticles, resetParticles, spawnParticles, updateParticles } from './systems/particles';
+import { recordWin } from './net/leaderboard';
+import { getRole, leaveRoom, sendInput, sendState } from './net/match';
+import { ATTACK, HOLD, applyFighter, applyProjectile, captureFighter, captureProjectile } from './net/sync';
 
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
@@ -17,18 +20,115 @@ const background = createBackground();
 let botActionTimer = 0, botDecision = 'idle';
 let bossBotTimer = 0, bossBotDecision = 'idle';
 let isTouchDevice = false;
-const keys = {};
-window.addEventListener('keydown', e => { keys[e.code] = true; e.preventDefault(); });
-window.addEventListener('keyup', e => { keys[e.code] = false; });
+let touchControlsInitialized = false;
+/* ---- состояние сетевого боя ----
+   isOnline включается только для онлайн-матча. Все одиночные режимы
+   (игрок / бот / босс) идут по прежним веткам и про сеть ничего не знают. */
+let isOnline = false;
+let onlineRole = 'host';
+// Хост: последний полученный ввод гостя.
+let remoteHold = 0, pendingRemoteAttacks = 0, lastRemoteInputSeq = -1;
+// Гость: буфер своих атак и счётчик исходящих пакетов.
+let pendingGuestAttacks = 0, inputSeq = 0, lastHoldSent = -1, lastInputSentAt = 0;
+// Гость: номер последнего применённого снимка — пакеты могут прийти не по порядку.
+let lastAppliedSnapshotSeq = -1;
+let snapshotSeq = 0, lastSnapshotSentAt = 0;
 
-if ('ontouchstart' in window || navigator.maxTouchPoints > 0) { isTouchDevice = true; document.body.classList.add('is-mobile'); setupTouchControls(); }
+/** Снимки 20 раз в секунду: хватает, потому что гость предсказывает движение локально. */
+const SNAPSHOT_INTERVAL_MS = 50;
+/** Ввод шлём чаще — пакет крошечный, а отзывчивость важнее трафика. */
+const INPUT_INTERVAL_MS = 33;
+
+const keys = {};
+// В чате и поле ника печатает человек: там клавиши игре не принадлежат,
+// а preventDefault на keydown вообще запретил бы ввод текста.
+function isTextEntry(target) {
+  if (!target) return false;
+  return target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable === true;
+}
+window.addEventListener('keydown', e => {
+  if (isTextEntry(e.target)) return;
+  if (e.code === 'Escape' && (gameState === 'fight' || gameState === 'pause')) {
+    togglePause();
+    return;
+  }
+  keys[e.code] = true;
+  e.preventDefault();
+});
+window.addEventListener('keyup', e => { if (isTextEntry(e.target)) return; keys[e.code] = false; });
+
+function checkMobileDevice() {
+  const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+  const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  if (hasTouch || isMobileUA) {
+    isTouchDevice = true;
+    document.body.classList.add('is-mobile');
+    setupTouchControls();
+  }
+}
 
 function setupTouchControls() {
-    const touchEl = document.getElementById('touchControls'); const activeTouches = {}; 
-    touchEl.addEventListener('touchstart', e => { e.preventDefault(); for (let touch of e.changedTouches) { const target = document.elementFromPoint(touch.clientX, touch.clientY); if (target && target.dataset.key) { activeTouches[touch.identifier] = target.dataset.key; keys[target.dataset.key] = true; } } }, { passive: false });
-    touchEl.addEventListener('touchend', e => { e.preventDefault(); for (let touch of e.changedTouches) { const key = activeTouches[touch.identifier]; if (key) { keys[key] = false; delete activeTouches[touch.identifier]; } } }, { passive: false });
-    touchEl.addEventListener('touchcancel', e => { e.preventDefault(); for (let touch of e.changedTouches) { const key = activeTouches[touch.identifier]; if (key) { keys[key] = false; delete activeTouches[touch.identifier]; } } }, { passive: false });
+  if (touchControlsInitialized) return;
+  const touchEl = document.getElementById('touchControls');
+  if (!touchEl) return;
+  touchControlsInitialized = true;
+  const activeTouches = {};
+
+  function getKeyFromTouch(touch) {
+    const el = document.elementFromPoint(touch.clientX, touch.clientY);
+    const btn = el ? el.closest('[data-key]') : null;
+    return btn ? btn.dataset.key : null;
+  }
+
+  function setBtnVisual(key, pressed) {
+    if (!key) return;
+    const btns = touchEl.querySelectorAll(`[data-key="${key}"]`);
+    btns.forEach(b => b.classList.toggle('pressed', pressed));
+  }
+
+  function handleTouchStartOrMove(e) {
+    e.preventDefault();
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      const touch = e.changedTouches[i];
+      const newKey = getKeyFromTouch(touch);
+      const oldKey = activeTouches[touch.identifier];
+      if (oldKey !== newKey) {
+        if (oldKey) {
+          keys[oldKey] = false;
+          setBtnVisual(oldKey, false);
+          delete activeTouches[touch.identifier];
+        }
+        if (newKey) {
+          activeTouches[touch.identifier] = newKey;
+          keys[newKey] = true;
+          setBtnVisual(newKey, true);
+        }
+      }
+    }
+  }
+
+  function handleTouchEnd(e) {
+    e.preventDefault();
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      const touch = e.changedTouches[i];
+      const oldKey = activeTouches[touch.identifier];
+      if (oldKey) {
+        keys[oldKey] = false;
+        setBtnVisual(oldKey, false);
+        delete activeTouches[touch.identifier];
+      }
+    }
+  }
+
+  touchEl.addEventListener('touchstart', handleTouchStartOrMove, { passive: false });
+  touchEl.addEventListener('touchmove', handleTouchStartOrMove, { passive: false });
+  touchEl.addEventListener('touchend', handleTouchEnd, { passive: false });
+  touchEl.addEventListener('touchcancel', handleTouchEnd, { passive: false });
+  touchEl.addEventListener('contextmenu', e => e.preventDefault());
 }
+
+checkMobileDevice();
+window.addEventListener('resize', checkMobileDevice);
 
 function roundRect(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();}
 
@@ -1203,8 +1303,68 @@ function handleInput() {
     if(keys['KeyR']){player1.attack('special');keys['KeyR']=false;}
   }
   if(isBossFight){ selection.bossIsPlayer?bossHumanInput():bossBotLogic(); }
+  else if(isOnline){ applyRemoteInput(); }
   else if(selection.p2Mode==='bot'){handleBotLogic();}
   else{if(player2.canAct()){player2.vx=0;player2.blocking=false;if(keys['ArrowLeft'])player2.vx=-player2.effSpeed;if(keys['ArrowRight'])player2.vx=player2.effSpeed;if(keys['ArrowUp']&&player2.grounded){player2.vy=-12;player2.grounded=false;player2.y=1;}if(keys['ArrowDown']){player2.blocking=true;player2.vx=0;}if(keys['KeyJ']){player2.attack('light');keys['KeyJ']=false;}if(keys['KeyK']){player2.attack('heavy');keys['KeyK']=false;}if(keys['KeyU']){player2.attack('special');keys['KeyU']=false;}}}
+}
+
+/**
+ * Хост: применяет ввод гостя к player2.
+ *
+ * Атаки копятся в буфере и не сбрасываются, пока боец не сможет действовать —
+ * ровно так же ведёт себя локальный ввод (нажатие остаётся в keys до применения).
+ */
+function applyRemoteInput(){
+  const p=player2; if(!p.canAct()) return;
+  p.vx=0;p.blocking=false;
+  if(remoteHold&HOLD.LEFT)p.vx=-p.effSpeed;
+  if(remoteHold&HOLD.RIGHT)p.vx=p.effSpeed;
+  if((remoteHold&HOLD.JUMP)&&p.grounded){p.vy=-12;p.grounded=false;p.y=1;}
+  if(remoteHold&HOLD.BLOCK){p.blocking=true;p.vx=0;}
+  if(pendingRemoteAttacks&ATTACK.LIGHT){p.attack('light');pendingRemoteAttacks&=~ATTACK.LIGHT;}
+  else if(pendingRemoteAttacks&ATTACK.HEAVY){p.attack('heavy');pendingRemoteAttacks&=~ATTACK.HEAVY;}
+  else if(pendingRemoteAttacks&ATTACK.SPECIAL){p.attack('special');pendingRemoteAttacks&=~ATTACK.SPECIAL;}
+}
+
+/**
+ * Гость: снимает свой ввод, отправляет хосту и сразу применяет локально.
+ *
+ * Предсказание нужно, чтобы управление не ощущалось вязким: ждать ответа хоста
+ * перед началом анимации — это задержка в целый пинг. Хост остаётся
+ * авторитетным, его снимок поправит расхождение.
+ *
+ * Гость играет теми же клавишами, что и P1 в одиночной игре, хотя управляет
+ * бойцом справа — так не нужно переучиваться между режимами.
+ */
+function stepGuestInput(){
+  let hold=0;
+  if(keys['KeyA'])hold|=HOLD.LEFT;
+  if(keys['KeyD'])hold|=HOLD.RIGHT;
+  if(keys['KeyW'])hold|=HOLD.JUMP;
+  if(keys['KeyS'])hold|=HOLD.BLOCK;
+
+  let attacks=0;
+  if(keys['KeyF']){attacks|=ATTACK.LIGHT;keys['KeyF']=false;}
+  if(keys['KeyG']||keys['KeyX']){attacks|=ATTACK.HEAVY;keys['KeyG']=false;keys['KeyX']=false;}
+  if(keys['KeyR']){attacks|=ATTACK.SPECIAL;keys['KeyR']=false;}
+  pendingGuestAttacks|=attacks;
+
+  // Атаку отправляем сразу, удержание — когда оно изменилось или по таймеру.
+  const now=performance.now();
+  if(attacks||hold!==lastHoldSent||now-lastInputSentAt>=INPUT_INTERVAL_MS){
+    lastInputSentAt=now;lastHoldSent=hold;
+    sendInput({s:++inputSeq,h:hold,a:attacks});
+  }
+
+  const p=player2; if(!p.canAct()) return;
+  p.vx=0;p.blocking=false;
+  if(hold&HOLD.LEFT)p.vx=-p.effSpeed;
+  if(hold&HOLD.RIGHT)p.vx=p.effSpeed;
+  if((hold&HOLD.JUMP)&&p.grounded){p.vy=-12;p.grounded=false;p.y=1;}
+  if(hold&HOLD.BLOCK){p.blocking=true;p.vx=0;}
+  if(pendingGuestAttacks&ATTACK.LIGHT){p.attack('light');pendingGuestAttacks&=~ATTACK.LIGHT;}
+  else if(pendingGuestAttacks&ATTACK.HEAVY){p.attack('heavy');pendingGuestAttacks&=~ATTACK.HEAVY;}
+  else if(pendingGuestAttacks&ATTACK.SPECIAL){p.attack('special');pendingGuestAttacks&=~ATTACK.SPECIAL;}
 }
 
 function bossHumanInput(){
@@ -1262,7 +1422,10 @@ function checkProjectileHit(a,d){if(!a.projectile||a.projectile.hit)return;const
 function rectsOverlap(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;}
 function pushBodies(){const dist=Math.abs(player1.x-player2.x),minDist=isBossFight?135:80;if(dist<minDist){const push=(minDist-dist)/2;if(player1.x<player2.x){player1.x-=push;player2.x+=push;}else{player1.x+=push;player2.x-=push;}}}
 
-function updateFight(dt) { handleInput();
+function updateFight(dt) {
+  // Гость бой не считает: у него своя ветка, а исход приходит снимками.
+  if(isOnline&&onlineRole==='guest'){ updateFightGuest(dt); return; }
+  handleInput();
   if(!player1.attacking)player1.facing=player1.x<player2.x?1:-1;
   if(!player2.attacking)player2.facing=player2.x<player1.x?1:-1;
   player1.update();player2.update();pushBodies();
@@ -1272,6 +1435,77 @@ function updateFight(dt) { handleInput();
   updateParticles(); roundTimerAccum+=dt;if(roundTimerAccum>=1){roundTimerAccum=0;roundTimer=Math.max(0,roundTimer-1);}
   if(screenShake>0)screenShake*=0.85;if(screenShake<0.5)screenShake=0;
   if(player1.hp<=0||player2.hp<=0||roundTimer<=0)endRound(); }
+
+/**
+ * Гость: ввод, предсказание и анимация. Ни попаданий, ни урона, ни конца раунда —
+ * всё это считает хост, иначе события применились бы дважды.
+ *
+ * update() бойцов крутим локально, чтобы между снимками (20 в секунду)
+ * движение и анимация оставались плавными.
+ */
+function updateFightGuest(dt){
+  stepGuestInput();
+  if(!player1.attacking)player1.facing=player1.x<player2.x?1:-1;
+  if(!player2.attacking)player2.facing=player2.x<player1.x?1:-1;
+  player1.update();player2.update();pushBodies();
+  if(!player1.attacking)player1.combo=0;if(!player2.attacking)player2.combo=0;
+  updateParticles();
+  if(screenShake>0)screenShake*=0.85;if(screenShake<0.5)screenShake=0;
+  // Таймер придёт в следующем снимке, но между пакетами тикаем сами.
+  roundTimerAccum+=dt;if(roundTimerAccum>=1){roundTimerAccum=0;roundTimer=Math.max(0,roundTimer-1);}
+}
+
+function buildSnapshot(){
+  return {
+    s:++snapshotSeq,
+    f1:captureFighter(player1), f2:captureFighter(player2),
+    p1:captureProjectile(player1), p2:captureProjectile(player2),
+    r:{gs:gameState,timer:roundTimer,round:roundNum,w1:p1Wins,w2:p2Wins,koText,koTimer}
+  };
+}
+
+function sendSnapshotNow(){
+  if(!isOnline||onlineRole!=='host'||!player1||!player2) return;
+  lastSnapshotSentAt=performance.now();
+  sendState(buildSnapshot());
+}
+
+function maybeSendSnapshot(now){
+  if(!isOnline||onlineRole!=='host'||!player1||!player2) return;
+  if(now-lastSnapshotSentAt<SNAPSHOT_INTERVAL_MS) return;
+  lastSnapshotSentAt=now;
+  sendState(buildSnapshot());
+}
+
+/** Гость: накатывает снимок хоста поверх своего предсказания. */
+function applySnapshot(snap){
+  if(!snap||!player1||!player2) return;
+  if(typeof snap.s==='number'){
+    if(snap.s<=lastAppliedSnapshotSeq) return;   // пакет опоздал, он уже неактуален
+    lastAppliedSnapshotSeq=snap.s;
+  }
+
+  // Урон считает хост, поэтому искры гость рисует по факту падения HP.
+  const hpBefore1=player1.hp, hpBefore2=player2.hp;
+
+  // Чужой боец — жёстко, свой — сглаженно: его мы предсказываем локально,
+  // и защёлкивание на каждом пакете читалось бы как рывки.
+  applyFighter(player1,snap.f1,1);
+  applyFighter(player2,snap.f2,0.35);
+  applyProjectile(player1,snap.p1);
+  applyProjectile(player2,snap.p2);
+
+  if(player1.hp<hpBefore1){ spawnParticles(player1.x,player1.centerY,player2.data.color,12,'hit'); screenShake=Math.min(screenShake+6,20); }
+  if(player2.hp<hpBefore2){ spawnParticles(player2.x,player2.centerY,player1.data.color,12,'hit'); screenShake=Math.min(screenShake+6,20); }
+
+  const r=snap.r; if(!r) return;
+  roundTimer=r.timer;roundNum=r.round;p1Wins=r.w1;p2Wins=r.w2;koText=r.koText;koTimer=r.koTimer;
+
+  if(r.gs&&r.gs!==gameState){
+    if(r.gs==='win'){ if(gameState!=='win') showWinner(); }
+    else gameState=r.gs;
+  }
+}
 
 function endRound() {
   gameState='ko';
@@ -1298,21 +1532,52 @@ function startRound() { gameState='fight';roundTimer=ROUND_DURATION_SECONDS;roun
 function showWinner() {
   gameState='win';
   hideTouchControls();
+  setFightHudVisible(false);
   setControlsInfoVisible(false);
-  const w=p1Wins>=1?player1:player2;
+  const w=p1Wins>p2Wins?player1:player2;
   document.getElementById('winnerName').textContent=w.data.name+(selection.p2Mode==='bot'&&!isBossFight&&w.pi!==1?' (БОТ)':'');
   document.getElementById('winnerName').style.color=w.data.color;
   document.getElementById('winnerLabel').textContent=isBossFight?(p1Wins>=1?'Гигант бездны повержен! Легенда!':'Тёмный Сергей поглотил твою душу...'):'побеждает!';
   showScreen('winScreen');
-  document.body.classList.remove('fight-active'); }
+  document.body.classList.remove('fight-active');
+
+  // Экран победы у гостя появляется из снимка, поэтому хост обязан
+  // отправить финальное состояние: в 'win' игровой цикл снимки уже не шлёт.
+  if (isOnline && onlineRole === 'host') sendSnapshotNow();
+
+  // Локальный хотсит не засчитываем: оба игрока сидят под одним аккаунтом,
+  // и победа не принадлежит кому-то конкретному. recordWin не бросает исключений.
+  if (isOnline) {
+    const iWon = onlineRole === 'host' ? p1Wins > p2Wins : p2Wins > p1Wins;
+    if (iWon) void recordWin('pvp');
+  } else if (p1Wins > p2Wins) {
+    if (isBossFight && !selection.bossIsPlayer) void recordWin('boss');
+    else if (!isBossFight && selection.p2Mode === 'bot') void recordWin('bot');
+  } }
 
 let lastTime=0;
-function gameLoop(timestamp) { const dt=Math.min((timestamp-lastTime)/1000,0.05);lastTime=timestamp;const time=timestamp/1000; ctx.clearRect(0,0,CW,CH);ctx.save(); if(screenShake>0)ctx.translate((Math.random()-0.5)*screenShake*2,(Math.random()-0.5)*screenShake*2); drawBackground(ctx,background,time,isBossFight); if(gameState==='fight'||gameState==='ko'){if(gameState==='fight')updateFight(dt);else{updateParticles();if(screenShake>0)screenShake*=0.85;if(screenShake<0.5)screenShake=0;}player1.draw(time);player2.draw(time);drawParticles(ctx);drawBossFX(time);drawFightUI(time);} ctx.restore();requestAnimationFrame(gameLoop); }
+function gameLoop(timestamp) {
+  const dt=Math.min((timestamp-lastTime)/1000,0.05);lastTime=timestamp;const time=timestamp/1000;
+  ctx.clearRect(0,0,CW,CH);ctx.save();
+  if(screenShake>0)ctx.translate((Math.random()-0.5)*screenShake*2,(Math.random()-0.5)*screenShake*2);
+  drawBackground(ctx,background,time,isBossFight);
+  if(gameState==='fight'||gameState==='ko'||gameState==='pause'){
+    if(gameState==='fight')updateFight(dt);
+    else if(gameState==='ko'){updateParticles();if(screenShake>0)screenShake*=0.85;if(screenShake<0.5)screenShake=0;}
+    maybeSendSnapshot(timestamp);
+    player1.draw(time);player2.draw(time);drawParticles(ctx);drawBossFX(time);drawFightUI(time);
+  }
+  ctx.restore();requestAnimationFrame(gameLoop);
+}
 
-function showSelect(){hideTouchControls();setControlsInfoVisible(false);hideScreen('menuScreen');showScreen('selectScreen');resetSelection();buildCharGrids();}
+function showSelect(){hideTouchControls();setFightHudVisible(false);setControlsInfoVisible(false);hideScreen('menuScreen');showScreen('selectScreen');resetSelection();buildCharGrids();}
 
 function updateControlsInfo(){
   const ci=document.getElementById('controlsInfo');
+  if(isOnline){
+    ci.innerHTML='<span><b style="color:var(--accent)">ТЫ:</b> <kbd>W</kbd> прыжок <kbd>A</kbd><kbd>D</kbd> ход <kbd>S</kbd> блок <kbd>F</kbd> удар <kbd>G</kbd> тяжёлый <kbd>R</kbd> спец</span><span><b style="color:var(--accent2)">СОПЕРНИК</b> — по сети</span>';
+    return;
+  }
   if(isBossFight){
     if(selection.bossIsPlayer){
       ci.innerHTML='<span><b style="color:var(--accent)">ГЕРОЙ:</b> <kbd>W</kbd> прыжок <kbd>A</kbd><kbd>D</kbd> ход <kbd>S</kbd> блок <kbd>F</kbd> удар <kbd>X</kbd> тяжёлый <kbd>R</kbd> спец</span><span><b style="color:#76ff03">БОСС:</b> <kbd>←</kbd><kbd>→</kbd> ход <kbd>↑</kbd> прыжок <kbd>↓</kbd> блок <kbd>T</kbd> хлыст <kbd>Y</kbd> пасть <kbd>G</kbd> шипы <kbd>H</kbd> волна <kbd>V</kbd> дождь <kbd>B</kbd> клоны <kbd style="color:#ff1744">N</kbd> УЛЬТА</span>';
@@ -1326,19 +1591,21 @@ function updateControlsInfo(){
 
 function startFight(){
   if(!selection.selectedP1||( !selection.selectedP2 && selection.p2Mode!=='boss'))return;
+  isOnline=false;
   hideScreen('selectScreen');
   document.body.classList.add('fight-active');
+  setFightHudVisible(true);
   if(selection.p2Mode==='boss'){
     isBossFight=true;
     // На сенсорных экранах босс всегда под управлением ИИ (много клавиш)
     if(isTouchDevice) selection.bossIsPlayer=false;
     player1=new Fighter(selection.selectedP1,CW*0.25,1,0);
     player2=new Fighter(BOSS_DATA,CW*0.72,-1,1);
-    if(isTouchDevice){document.getElementById('touchControls').style.display='flex';document.getElementById('p2TouchControls').style.display='none';}
+    if(isTouchDevice){showTouchControls('solo');}
     else{setControlsInfoVisible(true);updateControlsInfo();}
   } else {
     isBossFight=false;
-    if(isTouchDevice){document.getElementById('touchControls').style.display='flex';document.getElementById('p2TouchControls').style.display=selection.p2Mode==='bot'?'none':'flex';}
+    if(isTouchDevice){showTouchControls(selection.p2Mode==='player'?'versus':'solo');}
     else{setControlsInfoVisible(true);updateControlsInfo();}
     player1=new Fighter(selection.selectedP1,CW*0.3,1,0);
     player2=new Fighter(selection.selectedP2,CW*0.7,-1,1);
@@ -1347,9 +1614,131 @@ function startFight(){
   startRound();
 }
 
-function backToSelect(){ hideTouchControls();setControlsInfoVisible(false);hideScreen('winScreen');showScreen('selectScreen'); document.body.classList.remove('fight-active');gameState='menu';isBossFight=false;resetSelection();buildCharGrids();updateControlsInfo(); }
-function backToMenu(){ hideTouchControls();setControlsInfoVisible(false);hideScreen('winScreen');showScreen('menuScreen'); document.body.classList.remove('fight-active');gameState='menu';isBossFight=false; }
+/**
+ * Старт сетевого боя. Вызывается на обеих сторонах из сцены онлайна,
+ * когда хост и гость обменялись выбранными персонажами.
+ *
+ * Хост всегда слева (player1), гость справа (player2) — одинаково у обоих,
+ * чтобы состояние можно было пересылать как есть, без зеркалирования.
+ */
+function startOnlineFight(hostCharId, guestCharId){
+  const c1=CHARACTERS.find(c=>c.id===hostCharId), c2=CHARACTERS.find(c=>c.id===guestCharId);
+  if(!c1||!c2) return;
 
-Object.assign(window, { showSelect, setP2Mode, setBossCtrl, startFight, backToSelect, backToMenu });
+  isOnline=true; onlineRole=getRole(); isBossFight=false;
+  remoteHold=0;pendingRemoteAttacks=0;lastRemoteInputSeq=-1;
+  pendingGuestAttacks=0;inputSeq=0;lastHoldSent=-1;lastInputSentAt=0;
+  lastAppliedSnapshotSeq=-1;snapshotSeq=0;lastSnapshotSentAt=0;
+
+  hideScreen('menuScreen');hideScreen('selectScreen');hideScreen('winScreen');hideScreen('pauseScreen');
+  document.body.classList.add('fight-active');
+  setFightHudVisible(true);
+
+  player1=new Fighter(c1,CW*0.3,1,0);
+  player2=new Fighter(c2,CW*0.7,-1,1);
+
+  // У гостя нет второго локального игрока, поэтому раскладка одиночная.
+  if(isTouchDevice) showTouchControls('solo');
+  else{ setControlsInfoVisible(true); updateControlsInfo(); }
+
+  p1Wins=0;p2Wins=0;roundNum=1;
+  if(onlineRole==='host') startRound();
+  else{ gameState='fight';roundTimer=ROUND_DURATION_SECONDS;roundTimerAccum=0;resetParticles();screenShake=0;koText='РАУНД 1';koTimer=60; }
+}
+
+/** Хост: пакет ввода от гостя. Устаревшие пакеты игнорируем. */
+function onRemoteInput(pkt){
+  if(!pkt||typeof pkt.s!=='number') return;
+  if(pkt.s<=lastRemoteInputSeq) return;
+  lastRemoteInputSeq=pkt.s;
+  remoteHold=pkt.h|0;
+  // Атаки — события: накапливаем, чтобы ни одно нажатие не потерялось.
+  pendingRemoteAttacks|=pkt.a|0;
+}
+
+/** Соперник отключился: бой продолжать нечем. */
+function onOpponentLeft(){
+  if(!isOnline) return;
+  isOnline=false;gameState='menu';
+  hideTouchControls();setFightHudVisible(false);setControlsInfoVisible(false);
+  hideScreen('winScreen');hideScreen('pauseScreen');
+  document.body.classList.remove('fight-active');
+  showScreen('menuScreen');
+}
+
+/** Выход из сетевого боя по своей воле. */
+function quitOnlineMatch(){
+  if(!isOnline) return;
+  isOnline=false;
+  void leaveRoom();
+}
+
+function backToSelect(){ quitOnlineMatch(); hideTouchControls();setFightHudVisible(false);setControlsInfoVisible(false);hideScreen('winScreen');hideScreen('pauseScreen');showScreen('selectScreen'); document.body.classList.remove('fight-active');gameState='menu';isBossFight=false;resetSelection();buildCharGrids();updateControlsInfo(); }
+function backToMenu(){ quitOnlineMatch(); hideTouchControls();setFightHudVisible(false);setControlsInfoVisible(false);hideScreen('winScreen');hideScreen('pauseScreen');showScreen('menuScreen'); document.body.classList.remove('fight-active');gameState='menu';isBossFight=false; }
+
+function toggleFullscreen() {
+  if (!document.fullscreenElement) {
+    const el = document.documentElement;
+    if (el.requestFullscreen) el.requestFullscreen().catch(() => {});
+    else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+  } else {
+    if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
+    else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+  }
+}
+
+function togglePause() {
+  // В сетевом бою пауза только открывает меню: остановить симуляцию нельзя,
+  // она идёт у хоста и ждать нас не станет. Выйти из боя через это меню можно.
+  if (isOnline) {
+    const el = document.getElementById('pauseScreen');
+    if (el && el.classList.contains('hidden')) showScreen('pauseScreen');
+    else hideScreen('pauseScreen');
+    return;
+  }
+  if (gameState === 'fight') pauseFight();
+  else if (gameState === 'pause') resumeFight();
+}
+
+function pauseFight() {
+  if (gameState !== 'fight') return;
+  gameState = 'pause';
+  showScreen('pauseScreen');
+  Object.keys(keys).forEach(k => keys[k] = false);
+  const touchEl = document.getElementById('touchControls');
+  if (touchEl) touchEl.querySelectorAll('.pressed').forEach(el => el.classList.remove('pressed'));
+}
+
+function resumeFight() {
+  if (isOnline) { hideScreen('pauseScreen'); return; }
+  if (gameState !== 'pause') return;
+  hideScreen('pauseScreen');
+  gameState = 'fight';
+}
+
+function restartFight() {
+  // Перезапустить сетевой бой в одиночку нельзя — раунды ведёт хост.
+  if (isOnline) { hideScreen('pauseScreen'); return; }
+  hideScreen('pauseScreen');
+  p1Wins = 0; p2Wins = 0; roundNum = 1;
+  startRound();
+}
+
+function pauseToSelect() {
+  hideScreen('pauseScreen');
+  backToSelect();
+}
+
+function pauseToMenu() {
+  hideScreen('pauseScreen');
+  backToMenu();
+}
+
+Object.assign(window, {
+  showSelect, setP2Mode, setBossCtrl, startFight, backToSelect, backToMenu,
+  togglePause, resumeFight, restartFight, pauseToSelect, pauseToMenu, toggleFullscreen,
+  // Точки входа для сцены онлайна: DOM живёт там, симуляция — здесь.
+  startOnlineFight, onRemoteInput, onRemoteState: applySnapshot, onOpponentLeft
+});
 updateControlsInfo();
 requestAnimationFrame(gameLoop);

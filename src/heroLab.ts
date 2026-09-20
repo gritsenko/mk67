@@ -8,6 +8,7 @@ import {
   SPECIAL_COOLDOWN_FRAMES_SOFYA
 } from './data/characters';
 import { CharacterModelViewer } from './characterRenderer';
+import { initVersionChecker } from './systems/versionChecker';
 
 const FPS = 60;
 
@@ -337,3 +338,5 @@ const urlParams = new URLSearchParams(window.location.search);
 if (urlParams.get('mode') === 'art' || window.location.hash === '#art') {
   setGlobalMode('art');
 }
+
+initVersionChecker();

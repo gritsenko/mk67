@@ -17,11 +17,23 @@ export function resetSelection() {
 }
 
 export function checkReady() {
+  // В онлайне соперника выбирает он сам, поэтому достаточно своего бойца.
+  const online = selection.p2Mode === 'online';
+  const ready = Boolean(
+    selection.selectedP1 && (selection.selectedP2 || selection.p2Mode === 'boss' || online)
+  );
+
   const button = document.getElementById('startFightBtn') as HTMLButtonElement | null;
-  if (!button) return;
-  const ready = Boolean(selection.selectedP1 && (selection.selectedP2 || selection.p2Mode === 'boss'));
-  button.style.opacity = ready ? '1' : '0.4';
-  button.style.pointerEvents = ready ? 'auto' : 'none';
+  if (button) {
+    button.style.opacity = ready ? '1' : '0.4';
+    button.style.pointerEvents = ready ? 'auto' : 'none';
+  }
+
+  // Кнопки комнаты активны только когда боец выбран.
+  document.querySelectorAll<HTMLElement>('.online-needs-fighter').forEach((el) => {
+    el.style.opacity = ready && online ? '1' : '0.4';
+    el.style.pointerEvents = ready && online ? 'auto' : 'none';
+  });
 }
 
 function createCharCard(character: CharacterConfig, player: 1 | 2) {
@@ -65,16 +77,34 @@ export function setBossCtrl(asPlayer: boolean) {
 
 export function setP2Mode(mode: PlayerMode) {
   selection.p2Mode = mode;
+  const online = mode === 'online';
+
   document.getElementById('btnP2Player')?.classList.toggle('active-p2', mode === 'player');
   document.getElementById('btnP2Bot')?.classList.toggle('active-p2', mode === 'bot');
   document.getElementById('btnP2Boss')?.classList.toggle('active-p2', mode === 'boss');
-  document.getElementById('p2Grid')?.setAttribute('style', mode === 'boss' ? 'display:none' : 'display:grid');
+  document.getElementById('btnP2Online')?.classList.toggle('active-p2', online);
+
+  // В онлайне сетка соперника не нужна: он выбирает бойца у себя.
+  document.getElementById('p2Grid')?.setAttribute('style', mode === 'boss' || online ? 'display:none' : 'display:grid');
   document.getElementById('bossCard')?.setAttribute('style', mode === 'boss' ? 'display:flex' : 'display:none');
+  document.getElementById('onlinePanel')?.setAttribute('style', online ? 'display:flex' : 'display:none');
+
+  // Бой начинается по готовности обеих сторон, а не по кнопке.
+  const startRow = document.getElementById('startFightBtn');
+  if (startRow) startRow.style.display = online ? 'none' : '';
+
+  const label = document.getElementById('p2Label');
+  if (label) label.textContent = online ? 'Соперник по сети' : 'Игрок 2';
+
   if (mode === 'boss') setBossCtrl(false);
   const hint = document.getElementById('p2ControlsHint');
-  if (hint) hint.style.display = mode === 'bot' ? 'none' : 'inline';
-  const touchControls = document.getElementById('p2TouchControls');
-  if (touchControls && 'ontouchstart' in window) touchControls.style.display = mode === 'bot' || mode === 'boss' ? 'none' : 'flex';
+  if (hint) hint.style.display = mode === 'bot' || online ? 'none' : 'inline';
+
+  const touchEl = document.getElementById('touchControls');
+  if (touchEl) {
+    touchEl.classList.toggle('touch-versus', mode === 'player');
+    touchEl.classList.toggle('touch-solo', mode !== 'player');
+  }
   checkReady();
 }
 

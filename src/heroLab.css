@@ -48,6 +48,21 @@ body {
   margin-bottom: 16px;
 }
 
+.lab-version {
+  display: inline-block;
+  margin-left: 8px;
+  font-size: 11px;
+  color: var(--muted);
+  opacity: 0.75;
+  letter-spacing: 0.5px;
+  transition: opacity 0.2s, color 0.2s;
+}
+
+.lab-version:hover {
+  opacity: 1;
+  color: var(--fg);
+}
+
 .back-link {
   position: absolute;
   left: 0;

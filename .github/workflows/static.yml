@@ -36,6 +36,14 @@ jobs:
         run: npm ci
       - name: Build
         run: npm run build
+        env:
+          # Настройки бэкенда Nakama. Если VITE_NAKAMA_SERVER_KEY не задан,
+          # сборка всё равно пройдёт — игра просто соберётся без сетевых функций.
+          # Задаются в Settings → Secrets and variables → Actions.
+          VITE_NAKAMA_HOST: ${{ vars.VITE_NAKAMA_HOST || 'dev.gritsenko.biz' }}
+          VITE_NAKAMA_PORT: ${{ vars.VITE_NAKAMA_PORT || '443/game_api' }}
+          VITE_NAKAMA_SSL: ${{ vars.VITE_NAKAMA_SSL || 'true' }}
+          VITE_NAKAMA_SERVER_KEY: ${{ secrets.VITE_NAKAMA_SERVER_KEY }}
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Upload artifact

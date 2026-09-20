@@ -1,8 +1,12 @@
 import fs from 'fs';
 
-const code = fs.readFileSync('src/game.ts', 'utf8');
+const rawCode = fs.readFileSync('src/game.ts', 'utf8');
+const code = rawCode.replace(/\r\n/g, '\n');
 const start = code.indexOf('  tentacle(time,x0,y0,dir,len,speed,phase,color,w){');
 const end = code.indexOf('\n  }\n}\n\nfunction drawProjectileVis', start) + 4;
+if (start === -1 || end < 4) {
+  throw new Error(`Failed to locate character methods in src/game.ts! (start: ${start}, end: ${end})`);
+}
 const methodsBlock = code.substring(start, end);
 
 const out = `// @ts-nocheck

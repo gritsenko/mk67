@@ -1,0 +1,52 @@
+# Разворачивается на домашнем сервере в /opt/nakama.
+# Секреты лежат рядом в /opt/nakama/.env (chmod 600), в репозиторий не попадают.
+# Оба порта слушают только 127.0.0.1 — наружу всё идёт исключительно через nginx.
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: nakama-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: nakama
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d nakama"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  nakama:
+    image: heroiclabs/nakama:3.41.0
+    container_name: nakama
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./modules:/nakama/data/modules:ro
+    entrypoint:
+      - "/bin/sh"
+      - "-ec"
+      - >
+        /nakama/nakama migrate up
+        --database.address postgres:${POSTGRES_PASSWORD}@postgres:5432/nakama &&
+        exec /nakama/nakama
+        --name nakama1
+        --database.address postgres:${POSTGRES_PASSWORD}@postgres:5432/nakama
+        --logger.level INFO
+        --session.token_expiry_sec 7200
+        --socket.server_key ${NAKAMA_SERVER_KEY}
+        --session.encryption_key ${NAKAMA_SESSION_KEY}
+        --session.refresh_encryption_key ${NAKAMA_REFRESH_KEY}
+        --runtime.http_key ${NAKAMA_HTTP_KEY}
+        --console.username admin
+        --console.password ${NAKAMA_CONSOLE_PASSWORD}
+    ports:
+      - "127.0.0.1:7350:7350"
+      - "127.0.0.1:7351:7351"
+
+volumes:
+  pgdata:
