@@ -14,10 +14,12 @@
   /* Коэффициент пропорционального масштабирования интерфейса.
      Значение выставляет src/ui/uiScale.ts, 1 = базовый макет 1280x720. */
   --ui-scale: 1;
+  --select-ui-scale: 1;
   /* Единицы вьюпорта для содержимого внутри масштабированных блоков:
      zoom увеличивает и px, и vw/vh, поэтому их нужно заранее поделить. */
   --uvw: calc(1vw / var(--ui-scale));
   --uvh: calc(1vh / var(--ui-scale));
+  --select-uvw: calc(1vw / var(--select-ui-scale));
 }
 
 * {
@@ -93,7 +95,6 @@ body.is-mobile.fight-active #gameCanvas {
    zoom (в отличие от transform) участвует в раскладке, поэтому центрирование,
    прокрутка и попадание по кнопкам остаются корректными. */
 #menuScreen .menu-content,
-#selectScreen .select-content,
 #campaignScreen .campaign-content,
 #winScreen .win-content,
 #pauseScreen .pause-content,
@@ -104,6 +105,12 @@ body.is-mobile.fight-active #gameCanvas {
 .controls-info,
 #touchControls {
   zoom: var(--ui-scale);
+}
+
+/* Выбор бойцов компактнее остальных экранов, поэтому масштабируется от своих
+   реальных габаритов. Один zoom сохраняет пропорции всего исходного макета. */
+#selectScreen .select-content {
+  zoom: var(--select-ui-scale);
 }
 
 /* margin: auto вместо центрирования флексом — увеличенный блок, если он всё же
@@ -398,7 +405,7 @@ body.chat-open .orientation-prompt {
 
 /* Экран выбора бойцов */
 #selectScreen .select-content {
-  width: calc(96 * var(--uvw));
+  width: calc(96 * var(--select-uvw));
   max-width: 840px;
   animation: fadeUp 0.5s ease;
   padding: 12px 0;
@@ -1356,7 +1363,7 @@ body.is-mobile .chat-input { font-size: 16px; }
 
   /* Экран выбора бойцов */
   #selectScreen .select-content {
-    width: 98vw;
+    width: calc(98 * var(--select-uvw));
     max-width: 960px;
     padding: 6px 0;
     max-height: 100vh;

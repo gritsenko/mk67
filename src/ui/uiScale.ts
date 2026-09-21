@@ -12,10 +12,13 @@
  */
 const BASE_W = 1280;
 const BASE_H = 720;
+const SELECT_BASE_W = 860;
+const SELECT_BASE_H = 460;
 const MIN_SCALE = 1;
 const MAX_SCALE = 3;
 
 let applied = -1;
+let selectApplied = -1;
 
 function computeScale(): number {
   const raw = Math.min(window.innerWidth / BASE_W, window.innerHeight / BASE_H);
@@ -24,11 +27,27 @@ function computeScale(): number {
   return Math.round(clamped * 100) / 100;
 }
 
+function computeSelectScale(): number {
+  const raw = Math.min(
+    window.innerWidth * 0.94 / SELECT_BASE_W,
+    window.innerHeight * 0.94 / SELECT_BASE_H,
+  );
+  const clamped = Math.min(MAX_SCALE, Math.max(MIN_SCALE, raw));
+  return Math.round(clamped * 100) / 100;
+}
+
 export function applyUiScale(): void {
   const scale = computeScale();
-  if (scale === applied) return;
-  applied = scale;
-  document.documentElement.style.setProperty('--ui-scale', String(scale));
+  if (scale !== applied) {
+    applied = scale;
+    document.documentElement.style.setProperty('--ui-scale', String(scale));
+  }
+
+  const selectScale = computeSelectScale();
+  if (selectScale !== selectApplied) {
+    selectApplied = selectScale;
+    document.documentElement.style.setProperty('--select-ui-scale', String(selectScale));
+  }
 }
 
 export function initUiScale(): void {
